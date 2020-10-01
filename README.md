@@ -1,10 +1,11 @@
 # joker-network
 
 # Requirements:
-pip install opencv-python tensorflow
+pip install opencv-python tensorflow keras pyserial
 
 # How to run it?
 connect hardware
+
 open two terminal
 
 run consumerudp.py

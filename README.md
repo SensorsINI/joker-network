@@ -1,7 +1,21 @@
 # joker-network
 
 # Requirements:
+Test environment:
+
+OS: Mac OSX 10.15.7
+
+python: 3.7.3
+
+tensorflow: 1.14.0
+
+Keras: 2.3.1
+
 pip install opencv-python tensorflow keras pyserial
+
+For Max OSX, os.environ['KMP_DUPLICATE_LIB_OK']='True' might be required to enable duplicate openMPs running, Otherwise
+there might be some errors about openMP reported.
+
 
 # How to run it?
 connect hardware

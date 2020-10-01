@@ -1,8 +1,9 @@
 # joker-network
 
-1. Requirements:
+# Requirements:
 pip install opencv-python tensorflow
 
+# How to run it?
 connect hardware
 open two terminal
 

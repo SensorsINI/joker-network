@@ -59,7 +59,7 @@ get_event
 """
 from __future__ import print_function
 
-import cv2
+import cv2 # opencv-python
 import numpy as np
 
 from pyaer import libcaer

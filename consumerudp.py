@@ -58,74 +58,31 @@ get_event
 get_event
 """
 from __future__ import print_function
-
 import cv2
-import numpy as np
-
-# from pyaer import libcaer
-# from pyaer.davis import DAVIS
-
-from datetime import datetime
-
-
-import cv2
-import sys,os
-import gc
-import tensorflow as tf
-# from face_train_use_keras import Model
-# from model import create_smodel, create_model
-import time
-
-import keras
+import sys
 from keras.models import load_model
-
-
-#!/usr/bin/python
 import serial
-import syslog
-import time
 from datetime import datetime
-import math
-
-# from functools import reduce
-
-import numpy.ma as ma
-
-import multiprocessing,os,time
-from multiprocessing import Process
-
-
+import time
 import socket
-from utils import recv_into
 import numpy as np
+import logging
+log = logging.getLogger(__name__)
+
+
 MAXB = 10000000
-
-
 PORT = 12000
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 address = ("", PORT)
 server_socket.bind(address)
-
-
-#The following line is for serial over GPIO
-
-
-# savepath = './dvsoutrec2/tmp0/'
-
 class_name = ['joker', 'other']
-
 #人脸识别分类器本地存储路径
 cascade_path = "./jokeravi.xml"   
-
 # modelpath = './184binv32.h5'
 # modelpath = './alexnet184grayv12.h5'
 modelpath = sys.argv[1]
-
 resize = int(sys.argv[2])
-
 port = sys.argv[3]
-
-
 ard = serial.Serial(port,9600,timeout=5)
 
     
@@ -133,28 +90,16 @@ ard = serial.Serial(port,9600,timeout=5)
 # savedcounter = len(files)
 # print(avipath, modelpath, savedcounter)      
 color = (0, 255, 0)
-
 model = load_model(modelpath)
-
-    
-
-
 x = 112
 y = 112
-
 w = 50
 h = 50
-    
 #循环检测识别人脸
 count = 0
-
 # savedcounter = 30000
-
-
 clip_value = 3
 histrange = [(0, v) for v in (260, 346)]
-
-
 shapelike = [260,346,1]
 def get_event(device):
     data = device.get_event()

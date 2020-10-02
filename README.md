@@ -13,7 +13,12 @@ Keras: 2.3.1
 
 pip install opencv-python tensorflow keras pyserial
 
-For Max OSX, os.environ['KMP_DUPLICATE_LIB_OK']='True' might be required to enable duplicate openMPs running, Otherwise
+Some issues occured for Mac OSX:
+
+ a. Error [Errno 40] Message too long. This is caused by too small UDP packet size is set, default value is only 9216. 
+ Use this command to change the value to 65535: sudo sysctl -w net.inet.udp.maxdgram=65535
+
+ b. os.environ['KMP_DUPLICATE_LIB_OK']='True' might be required to enable duplicate openMPs running, Otherwise
 there might be some errors about openMP reported.
 
 

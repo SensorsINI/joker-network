@@ -58,6 +58,9 @@ get_event
 get_event
 """
 from __future__ import print_function
+
+import os
+
 import cv2
 import sys
 from keras.models import load_model
@@ -69,6 +72,11 @@ import numpy as np
 import logging
 log = logging.getLogger(__name__)
 
+# Only used in mac osx
+try:
+    os.environ['KMP_DUPLICATE_LIB_OK']='True'
+except Exception as e:
+    print(e)
 
 MAXB = 10000000
 PORT = 12000

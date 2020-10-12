@@ -14,8 +14,8 @@ const String HELP = "Send char '1' to activate solenoid finger, '0' to relax it"
 const int fingerPin = 3;  // setting this high will activate solenoide finger. But it should NOT be left high long, or the solenoide can burn out
 const int butPin = 8; // pushing button will pull pin low (pin is configured input pullup with button tied to ground on other side of button)
 
-const unsigned long PULSE_TIME_MS = 50; // pulse time in ms to drive finger out
-const int  HOLD_DUTY_CYCLE = 10; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
+const unsigned long PULSE_TIME_MS = 150; // pulse time in ms to drive finger out
+const int  HOLD_DUTY_CYCLE = 30; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
 const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0'; // python sends character '1' to activate finger, '0' to relax it
 const int STATE_IDLE = 0, STATE_FINGER_PUSHING_OUT = 1, STATE_FINGER_HOLDING = 2;
 

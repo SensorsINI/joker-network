@@ -1,6 +1,6 @@
 keras
 tensorflow
-opencv
+opencv-python
 numpy
 pyserial
 # pyaer

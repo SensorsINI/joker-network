@@ -24,7 +24,7 @@ const long HEARTBEAT_PERIOD_MS=500; // half cycle of built-in LED heartbeat to s
 const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0'; // python sends character '1' to activate finger, '0' to relax it
 const int STATE_IDLE = 0, STATE_FINGER_PUSHING_OUT = 1, STATE_FINGER_HOLDING = 2;
 
-const bool DEBUG = true;
+const bool DEBUG = false;
 
 unsigned long fingerActivatedTime = 0, heartbeatToggleTimeMs=0;
 int state = 0, previousState = state, previousButState = HIGH;
@@ -87,20 +87,20 @@ void loop()
       if (previousState != STATE_IDLE) {
         if (DEBUG) Serial.println("relaxing finger");
       }
-      analogWrite(fingerPin, 0);
+      analogWrite(fingerPin, HIGH);
       break;
     case STATE_FINGER_PUSHING_OUT:
       if (previousState == STATE_IDLE) {
         fingerActivatedTime = millis();
         if (DEBUG) Serial.println("pushing finger out");
-        analogWrite(fingerPin, 255);
+        analogWrite(fingerPin, LOW);
       } else if (millis() - fingerActivatedTime > PULSE_TIME_MS) {
         state = STATE_FINGER_HOLDING;
         if (DEBUG) Serial.println("now holding finger out");
       }
       break;
     case STATE_FINGER_HOLDING:
-      analogWrite(fingerPin, HOLD_DUTY_CYCLE);
+      analogWrite(fingerPin, 255-HOLD_DUTY_CYCLE); // invert because pin output is active low to turn on solenoid current
       break;
   }
   previousState = state;
@@ -109,6 +109,7 @@ void loop()
   if(millis()-heartbeatToggleTimeMs>heartbeatToggleTimeMs){
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN))
     heartbeatToggleTimeMs=millis();
+    if(DEBUG) Serial.println("heartbeat");
   }
   watchdog.reset();
 }

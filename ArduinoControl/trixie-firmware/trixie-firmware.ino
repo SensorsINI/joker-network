@@ -2,7 +2,10 @@
 // finger control for trixsie robot
 // last modification tobi Oct 2020
 
+#include <Watchdog.h> // install from library manager
+
 // IRF 510 power TO220AB package MOSFET has pin order from left facing device GDS
+// 2N3906 has pins in order EBC
 
 // use Arduino settings Arduino Nano, processor AtMega328P (old bootloader) for the chinese nanos with CH340 USB serial port.
 // Note serial baud rate is 115200 baud for serial monitor. You might need to "sudo chmod a+rw /dev/ttyUSB0" on linux after each boot.
@@ -16,16 +19,22 @@ const int butPin = 8; // pushing button will pull pin low (pin is configured inp
 
 const unsigned long PULSE_TIME_MS = 150; // pulse time in ms to drive finger out
 const int  HOLD_DUTY_CYCLE = 30; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
+const long HEARTBEAT_PERIOD_MS=500; // half cycle of built-in LED heartbeat to show we are running
+
 const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0'; // python sends character '1' to activate finger, '0' to relax it
 const int STATE_IDLE = 0, STATE_FINGER_PUSHING_OUT = 1, STATE_FINGER_HOLDING = 2;
 
 const bool DEBUG = true;
 
-unsigned long fingerActivatedTime = 0;
+unsigned long fingerActivatedTime = 0, heartbeatToggleTimeMs=0;
 int state = 0, previousState = state, previousButState = HIGH;
 
 void setup()
 {
+
+  pinMode(fingerPin, OUTPUT); // do this first to make sure solenoid turned off
+  digitalWrite(fingerPin,HIGH);  // HIGH turns OFF the finger solenoid by pulling power MOSFET gate low
+  pinMode(butPin, INPUT_PULLUP); // button activates solenoid
 
   Serial.begin(115200);  // initialize serial communications at max speed possible 115kbaud bps
   Serial.println(VERSION);
@@ -39,9 +48,7 @@ void setup()
   Serial.print("Finger hold duty cycle of 255: ");
   Serial.println(HOLD_DUTY_CYCLE);
   Serial.println(HELP);
-  pinMode(fingerPin, OUTPUT);
-  pinMode(butPin, INPUT_PULLUP);
-
+  watchdog.enable(Watchdog::TIMEOUT_1S);
 }
 
 void loop()
@@ -99,4 +106,9 @@ void loop()
   previousState = state;
   previousButState=but;
 
+  if(millis()-heartbeatToggleTimeMs>heartbeatToggleTimeMs){
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN))
+    heartbeatToggleTimeMs=millis();
+  }
+  watchdog.reset();
 }

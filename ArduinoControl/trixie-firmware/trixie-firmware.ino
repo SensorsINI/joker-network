@@ -2,7 +2,8 @@
 // finger control for trixsie robot
 // last modification tobi Oct 2020
 
-#include <Watchdog.h> // install from library manager
+#include <Watchdog.h> // https://github.com/janelia-arduino/Watchdog version 2.2.0 (not other watchdog library)
+// install from library manager sketch/install library/library manager... or ctl-shift-i
 
 // IRF 510 power TO220AB package MOSFET has pin order from left facing device GDS
 // 2N3906 has pins in order EBC
@@ -11,6 +12,7 @@
 // Note serial baud rate is 115200 baud for serial monitor. You might need to "sudo chmod a+rw /dev/ttyUSB0" on linux after each boot.
 // To test with serial monitor, set line endings to "none" and enter commands 0, 1 in input field.
 
+Watchdog watchdog;
 const String VERSION = "*** Trixsie Oct 2020 V1.0";
 const String HELP = "Send char '1' to activate solenoid finger, '0' to relax it";
 
@@ -107,7 +109,7 @@ void loop()
   previousButState=but;
 
   if(millis()-heartbeatToggleTimeMs>heartbeatToggleTimeMs){
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN))
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     heartbeatToggleTimeMs=millis();
     if(DEBUG) Serial.println("heartbeat");
   }

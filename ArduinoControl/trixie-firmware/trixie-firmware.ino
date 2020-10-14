@@ -92,13 +92,13 @@ void loop()
       if (previousState != STATE_IDLE) {
         if (DEBUG) Serial.println("relaxing finger");
       }
-      analogWrite(FINGER_PIN, 255);
+      digitalWrite(FINGER_PIN, 1);
       break;
     case STATE_FINGER_PUSHING_OUT:
       if (previousState == STATE_IDLE) {
         fingerActivatedTime = millis();
         if (DEBUG) Serial.println("pushing finger out");
-        analogWrite(FINGER_PIN, 0);
+        digitalWrite(FINGER_PIN, 0);
       } else if (millis() - fingerActivatedTime > PULSE_TIME_MS) {
         state = STATE_FINGER_HOLDING;
         if (DEBUG) Serial.println("now holding finger out");

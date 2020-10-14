@@ -3,5 +3,5 @@ tensorflow
 opencv-python
 numpy
 pyserial
-# pyaer
+pyaer # needs libcaer; see https://github.com/duguyue100/pyaer
 

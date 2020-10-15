@@ -4,6 +4,8 @@
 
 #include <Watchdog.h> // https://github.com/janelia-arduino/Watchdog version 2.2.0 (not other watchdog library)
 // install from library manager sketch/install library/library manager... or ctl-shift-i
+#include <EEPROM.h>
+
 
 // IRF 510 power TO220AB package MOSFET has pin order from left facing device GDS
 // 2N3906 has pins in order EBC
@@ -12,26 +14,31 @@
 // use Arduino settings Arduino Nano, processor AtMega328P (old bootloader) for the chinese nanos with CH340 USB serial port.
 // Note serial baud rate is 115200 baud for serial monitor. You might need to "sudo chmod a+rw /dev/ttyUSB0" on linux after each boot.
 // To test with serial monitor, set line endings to "none" and enter commands 0, 1 in input field.
+// or use minicom with  minicom -b 115200 -D /dev/ttyUSB0 -w 
 
 const bool DEBUG = false; // set true to enable prints to serial port, but will slow down latency of response
 
 Watchdog watchdog;
 const String VERSION = "*** Trixsie Oct 2020 V1.0";
-const String HELP = "Send char '1' to activate solenoid finger, '0' to relax it";
+const String HELP = "Send char '1' to activate solenoid finger, '0' to relax it\n+/- increase/decrease pulse time, ]/[ increase/decrease hold duty cycle";
 
 const int FINGER_PIN = 3;  // setting this high will activate solenoide finger. But it should NOT be left high long, or the solenoide can burn out
 const int BUTTON_PIN = 8; // pushing button will pull pin low (pin is configured input pullup with button tied to ground on other side of button)
 
-const unsigned long PULSE_TIME_MS = 150; // pulse time in ms to drive finger out
+const int PULSE_TIME_MS = 150; // pulse time in ms to drive finger out
 const int  HOLD_DUTY_CYCLE = 30; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
-const long HEARTBEAT_PERIOD_MS=500; // half cycle of built-in LED heartbeat to show we are running
+const int HEARTBEAT_PERIOD_MS=500; // half cycle of built-in LED heartbeat to show we are running
 
 const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0'; // python sends character '1' to activate finger, '0' to relax it
+const char CMD_INC_PT='+', CMD_DEC_PT='-', CMD_INC_DC=']', CMD_DEC_DC='[';  // to tune values
 const int STATE_IDLE = 0, STATE_FINGER_PUSHING_OUT = 1, STATE_FINGER_HOLDING = 2;
 
 unsigned long fingerActivatedTime = 0, heartbeatToggleTimeMs=0;
 int state = 0, previousState = state, previousButState = HIGH;
 bool heartbeatFlag=0;
+
+unsigned long pulseTimeMs; // read from EEPROM
+int holdDutyCycle;
 
 void setup()
 {
@@ -41,6 +48,22 @@ void setup()
   pinMode(BUTTON_PIN, INPUT_PULLUP); // button activates solenoid
   pinMode(LED_BUILTIN, OUTPUT);
 
+  // check EEPROM values for pulses time and duty cycle
+  byte b=EEPROM.read(0);
+  if(b!=0) {
+    EEPROM.write(0, PULSE_TIME_MS); // if uninitialized, set the value
+    pulseTimeMs=PULSE_TIME_MS;
+  }else{
+    pulseTimeMs=b; // otherwise read it
+  } 
+  b=EEPROM.read(1);
+  if(b!=0) {
+    EEPROM.write(1, HOLD_DUTY_CYCLE);
+    holdDutyCycle=HOLD_DUTY_CYCLE;
+  }else{
+    holdDutyCycle=b;
+  }
+  
   Serial.begin(115200);  // initialize serial communications at max speed possible 115kbaud bps
   Serial.println(VERSION);
   Serial.print("Compile date and time: ");
@@ -49,10 +72,12 @@ void setup()
   Serial.println(__TIME__);
   if (DEBUG) Serial.println("Compiled with DEBUG=true"); else Serial.println("Compiled with DEBUG=false");
   Serial.print("Finger pulse time in ms: ");
-  Serial.println(PULSE_TIME_MS);
+  Serial.println(pulseTimeMs);
   Serial.print("Finger hold duty cycle of 255: ");
-  Serial.println(HOLD_DUTY_CYCLE);
+  Serial.println(holdDutyCycle);
   Serial.println(HELP);
+
+  
   watchdog.enable(Watchdog::TIMEOUT_1S);
 }
 
@@ -66,6 +91,30 @@ void loop()
         break;
       case CMD_RELAX_FINGER:
         state = STATE_IDLE;
+        break;
+      case CMD_INC_PT:
+        if(pulseTimeMs<255) pulseTimeMs++;
+        EEPROM.write(0, pulseTimeMs);
+        Serial.print("pulseTimeMs: ");
+        Serial.println(pulseTimeMs);
+        break;
+      case CMD_INC_DC:
+        if(holdDutyCycle<255) holdDutyCycle++;
+        EEPROM.write(0, holdDutyCycle);
+        Serial.print("holdDutyCycle: ");
+        Serial.println(holdDutyCycle);
+        break;
+     case CMD_DEC_PT:
+        if(pulseTimeMs>0) pulseTimeMs--;
+        EEPROM.write(0, pulseTimeMs);
+        Serial.print("pulseTimeMs: ");
+        Serial.println(pulseTimeMs);
+        break;
+      case CMD_DEC_DC:
+        if(holdDutyCycle>0) holdDutyCycle--;
+        EEPROM.write(0, holdDutyCycle);
+        Serial.print("holdDutyCycle: ");
+        Serial.println(holdDutyCycle);
         break;
       default:
         Serial.print("unknown command character recieved: ");
@@ -99,13 +148,13 @@ void loop()
         fingerActivatedTime = millis();
         if (DEBUG) Serial.println("pushing finger out");
         digitalWrite(FINGER_PIN, 0);
-      } else if (millis() - fingerActivatedTime > PULSE_TIME_MS) {
+      } else if (millis() - fingerActivatedTime > pulseTimeMs) {
         state = STATE_FINGER_HOLDING;
         if (DEBUG) Serial.println("now holding finger out");
       }
       break;
     case STATE_FINGER_HOLDING:
-      analogWrite(FINGER_PIN, 255L-HOLD_DUTY_CYCLE); // invert because pin output is active low to turn on solenoid current
+      analogWrite(FINGER_PIN, 255-holdDutyCycle); // invert because pin output is active low to turn on solenoid current
       break;
   }
   previousState = state;

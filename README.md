@@ -43,14 +43,14 @@ there might be some errors about openMP reported.
  1. run consumerudp.py
 
 ```shell script
-python -m consumerudp  arduinoPort
-example: python -m consumerudp.py /dev/ttyUSB0
+python -m consumer  arduinoPort
+example: python -m consumer.py /dev/ttyUSB0
 ```
 
  1. run producerudp.py
 
 ```shell script
-python -m producerudp
+python -m producer
 ```
 
 ## Firmware

@@ -16,6 +16,7 @@ import socket
 import numpy as np
 from globals_and_utils import *
 from timers import Timer
+from engineering_notation import EngNumber  as eng # only from pip
 
 log=my_logger(__name__)
 
@@ -30,7 +31,7 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 address = ("", PORT)
 server_socket.bind(address)
 log.info('loading CNN model {}'.format(MODEL))
-model = load_model(MODEL,compile=True)
+model = load_model(MODEL)
 serial_port = sys.argv[1]
 log.info('opening serial port {} to send commands to finger'.format(serial_port))
 arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
@@ -41,27 +42,23 @@ log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('
 
 if __name__ == '__main__':
     while True:
-        try:
-            with Timer('recieve UDP'):
-                receive_data, client_address = server_socket.recvfrom(udpbufsize)
+        with Timer('recieve UDP'):
+            receive_data, client_address = server_socket.recvfrom(udpbufsize)
 
-            with Timer('unpickle and normalize/reshape'):
-                img = pickle.loads(receive_data)
-                img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
-            with Timer('run CNN'):
-                tmp = model.predict(img[None, :])
-            with Timer('process output vector'):
-                pred = list(tmp[0])
-                index = pred.index(max(pred))
-            log.info('{}'.format('.' if index==0 else 'joker'))
+        with Timer('unpickle and normalize/reshape'):
+            img = pickle.loads(receive_data)
+            img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
+        with Timer('run CNN'):
+            pred = model.predict(img[None, :])
+        with Timer('process output vector'):
+            dec = np.argmax(pred[0])
+        log.info('joker: {:.2f} nonjoker: {:.2f} {}'.format((pred[0][1]),(pred[0][0]),'(JOKER)' if dec==1 else ''))
 
-            with Timer('transmit to serial port'):
-                if index==1: # joker
-                    arduino_serial_port.write(b'1')
-                    log.info('JOKER!!!!! delaying 1s')
-                    time.sleep(1)
-                else:
-                    arduino_serial_port.write(b'0')
+        with Timer('transmit to serial port'):
+            if dec==1: # joker
+                arduino_serial_port.write(b'1')
+                log.info('JOKER!!!!! delaying 1s')
+                time.sleep(1)
+            else:
+                arduino_serial_port.write(b'0')
 
-        except Exception as e:
-            log.error(str(e))

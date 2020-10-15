@@ -16,6 +16,7 @@ import socket
 import numpy as np
 from globals_and_utils import *
 from timers import Timer
+from engineering_notation import EngNumber  as eng # only from pip
 
 log=my_logger(__name__)
 
@@ -52,6 +53,8 @@ device.start_data_stream()
 device.set_bias_from_json("./configs/davis346_config.json")
 xfac=float(IMSIZE)/device.dvs_size_X
 yfac=float(IMSIZE)/device.dvs_size_Y
+histrange = [(0, v) for v in (IMSIZE, IMSIZE)] # allocate DVS frame histogram to desired output size
+npix=IMSIZE*IMSIZE
 
 def producer():
     if SHOW_DVS_OUTPUT:
@@ -61,7 +64,7 @@ def producer():
         while True:
             events = None
             with Timer('accumulate DVS'):
-                while events is None or len(events)<EVENT_COUNT:
+                while events is None or len(events)<EVENT_COUNT_PER_FRAME:
                     data = device.get_event()
                     # assemble 'frame' of EVENT_COUNT events
                     if data is not None:
@@ -74,27 +77,25 @@ def producer():
                                 events=pol_events
                             else:
                                 events = np.vstack([events, pol_events]) # otherwise tack new events to end
-                    log.debug('got {} events (total so far {}/{} events)'
-                             .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
+                    # log.debug('got {} events (total so far {}/{} events)'
+                    #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
 
             with Timer('normalization'):
-                log.info('got {} events, making frame'.format(len(events)))
                 # take DVS coordinates and scale x and y to output frame dimensions using flooring math
                 events[:,1]=np.floor(events[:,1]*xfac)
                 events[:,2]=np.floor(events[:,2]*yfac)
-                pol_on = (events[:, 3] == 1)
-                pol_off = np.logical_not(pol_on)
+                frame, _, _ = np.histogram2d(
+                    events[:, 2], events[:, 1],
+                    bins=(IMSIZE, IMSIZE), range=histrange)
+                fmax_count=np.max(frame)
+                frame[frame > EVENT_COUNT_CLIP_VALUE]=EVENT_COUNT_CLIP_VALUE
+                frame= (255. / EVENT_COUNT_CLIP_VALUE) * frame # max pixel will have value 255
 
-                img_on, _, _ = np.histogram2d(
-                    events[pol_on, 2], events[pol_on, 1],
-                    bins=(IMSIZE, IMSIZE), range=histrange)
-                img_off, _, _ = np.histogram2d(
-                    events[pol_off, 2], events[pol_off, 1],
-                    bins=(IMSIZE, IMSIZE), range=histrange)
-                pixmap = img_on + img_off # diff of both 2d histograms, ON positive counts, OFF negative counts
-                pixmap[pixmap>CLIP_VALUE]=CLIP_VALUE
-                pixmap=(1./CLIP_VALUE)*pixmap
-                pixmap=pixmap.astype('uint8')
+            # statistics
+            focc=np.count_nonzero(frame)
+            frame=frame.astype('uint8')
+
+            log.info('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
 
                 # tmpvar = np.reshape(imgtmp, [imgtmp.shape[0] * imgtmp.shape[1],1]) # make unit8 vector of counts
                 # tmpvar = tmpvar * 1. / np.max(tmpvar)
@@ -121,14 +122,14 @@ def producer():
                 # pixmap = np.reshape(pixmap, imgtmp.shape).astype('uint8')
 
             with Timer('send frame'):
-                data = pickle.dumps(pixmap)
+                data = pickle.dumps(frame)
                 client_socket.sendto(data, udp_address)
 
             if SHOW_DVS_OUTPUT:
                 with Timer('show DVS image'):
-                    min = np.min(pixmap)
-                    img = ((pixmap - min) / (np.max(pixmap) - min))
-                    cv2.imshow('DVS', img)
+                    # min = np.min(frame)
+                    # img = ((frame - min) / (np.max(frame) - min))
+                    cv2.imshow('DVS', frame.astype('float')/255)
                     if not cv2_resized:
                         cv2.resizeWindow('DVS', 800, 600)
                         cv2_resized = True

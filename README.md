@@ -1,22 +1,29 @@
 # joker-network
 
+Host side code for the Trixsy card magic robot.
+
 # Requirements:
 Test environment:
 
- - OS: Mac OSX 10.15.7, Ubuntu 18.04
- - python: 3.7.3
- - tensorflow: 1.14.0
+ - OS: Mac OSX 10.15.7 or Ubuntu 18.04
+ - python: 3.8
+ - tensorflow: 2.3.1
  - Keras: 2.3.1
- - pyaer
+ - pyaer https://github.com/duguyue100/pyaer
  
-pip install opencv-python tensorflow keras pyserial
-
+ Make a conda environment, then in it install the libraries.
+ 
+```
+pip install opencv-python tensorflow keras pyserial pyaer engineering_notation
+```
 or
-
+```
 conda install keras tensorflow opencv numpy pyserial -c conda-forge
+pip install pyaer engineering_notation
+```
 
 ### pyaer
-You also need pyaer. Clone it, then from the clone do the installation from within your conda environment
+pyaer needs libcaer. Clone it, then follow instructions in its README to install libcaer. 
 
 
 
@@ -30,19 +37,25 @@ there might be some errors about openMP reported.
 
 
 # How to run it?
- 1. connect hardware
+ 1. connect hardware: DVS to usb and Arduino to USB.
+ 1. Find out which serial port device the Arduino appears on. You can use dmesg on linux.
  1. open two terminals
  1. run consumerudp.py
 
-python consumerudp.py cnnModelName resize arduinoPort
-example: python consumerudp.py afnorm224v1.h5 224 arduinoPort
+```shell script
+python -m consumerudp  arduinoPort
+example: python -m consumerudp.py /dev/ttyUSB0
+```
 
  1. run producerudp.py
 
-python producerudp.py resize
-example: python producerudp.py 224
+```shell script
+python -m producerudp
+```
 
-open ArduinoControl/trixsie-firmware/trixsie-firmware.ino
+## Firmware
+
+ArduinoControl/trixsie-firmware/trixsie-firmware.ino
 
 joker-classify-network.py is for training.  
 command python joker-classify-network.py imgdir weightfilename resize

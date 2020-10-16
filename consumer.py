@@ -35,7 +35,6 @@ model = load_model(MODEL)
 serial_port = sys.argv[1]
 log.info('opening serial port {} to send commands to finger'.format(serial_port))
 arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
-
 udpbufsize = IMSIZE * IMSIZE+1000
 
 log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('GPU'))>0 else 'not available (check tensorflow/cuda setup)'))
@@ -52,12 +51,14 @@ if __name__ == '__main__':
             pred = model.predict(img[None, :])
         with Timer('process output vector'):
             dec = np.argmax(pred[0])
-        log.info('joker: {:.2f} nonjoker: {:.2f} {}'.format((pred[0][1]),(pred[0][0]),'(JOKER)' if dec==1 else ''))
+            joker_prob=pred[0][1]
+        scale=20
+        njoker_star=int(joker_prob*scale)
+        log.info('joker prediction: {}{} {}'.format('*'*njoker_star,' '*(scale-njoker_star),'(JOKER)' if dec==1 else '       '))
 
         with Timer('transmit to serial port'):
             if dec==1: # joker
                 arduino_serial_port.write(b'1')
-                log.info('JOKER!!!!! delaying 1s')
                 time.sleep(1)
             else:
                 arduino_serial_port.write(b'0')

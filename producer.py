@@ -65,28 +65,21 @@ def producer():
             events = None
             with Timer('accumulate DVS'):
                 while events is None or len(events)<EVENT_COUNT_PER_FRAME:
-                    data = device.get_event()
+                    pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
                     # assemble 'frame' of EVENT_COUNT events
-                    if data is not None:
-                        (pol_events, num_pol_event,
-                         special_events, num_special_event,
-                         frames_ts, frames, imu_events,
-                         num_imu_event) = data
-                        if num_pol_event > 0:
-                            if events is None:
-                                events=pol_events
-                            else:
-                                events = np.vstack([events, pol_events]) # otherwise tack new events to end
-                    # log.debug('got {} events (total so far {}/{} events)'
-                    #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
+                    if  num_pol_event>0:
+                        if events is None:
+                            events=pol_events
+                        else:
+                            events = np.vstack([events, pol_events]) # otherwise tack new events to end
+            # log.debug('got {} events (total so far {}/{} events)'
+            #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
 
             with Timer('normalization'):
                 # take DVS coordinates and scale x and y to output frame dimensions using flooring math
                 events[:,1]=np.floor(events[:,1]*xfac)
                 events[:,2]=np.floor(events[:,2]*yfac)
-                frame, _, _ = np.histogram2d(
-                    events[:, 2], events[:, 1],
-                    bins=(IMSIZE, IMSIZE), range=histrange)
+                frame, _, _ = np.histogram2d(events[:, 2], events[:, 1], bins=(IMSIZE, IMSIZE), range=histrange)
                 fmax_count=np.max(frame)
                 frame[frame > EVENT_COUNT_CLIP_VALUE]=EVENT_COUNT_CLIP_VALUE
                 frame= (255. / EVENT_COUNT_CLIP_VALUE) * frame # max pixel will have value 255
@@ -94,32 +87,7 @@ def producer():
             # statistics
             focc=np.count_nonzero(frame)
             frame=frame.astype('uint8')
-
-            log.info('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
-
-                # tmpvar = np.reshape(imgtmp, [imgtmp.shape[0] * imgtmp.shape[1],1]) # make unit8 vector of counts
-                # tmpvar = tmpvar * 1. / np.max(tmpvar)
-                # SUM = np.sum(tmpvar)
-                # COUNT = np.sum(tmpvar > 0)
-                # MEAN = SUM / COUNT
-                # tmpvar2 = ma.masked_values(tmpvar, 0)
-                # # mean3 = np.mean(tmpvar2.compressed())
-                # var3 = np.var(tmpvar2.compressed())
-                # sig = math.sqrt(var3)
-                # if sig < (0.1 / 255.0):
-                #     sig = 0.1 / 255.0
-                # numSDevs = 3.
-                # mean_png_gray = 0 if RECTIFY_POLARITIES == True else (127. / 255)
-                # zeroValue = mean_png_gray
-                #
-                # fullrange = numSDevs * sig if RECTIFY_POLARITIES == True else (2. * numSDevs * sig)
-                # halfRange = 0 if RECTIFY_POLARITIES == True else (numSDevs * sig)
-                # rangenew = 1
-                # tmpvar[tmpvar > 0] = ((tmpvar[tmpvar > 0.] + halfRange)*rangenew) / fullrange
-                # tmpvar[tmpvar > 1] = 1.
-                # tmpvar[tmpvar == 0] = mean_png_gray
-                # pixmap = tmpvar * 1.0 * RANGE_NORMALIZED_FRAME
-                # pixmap = np.reshape(pixmap, imgtmp.shape).astype('uint8')
+            log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
 
             with Timer('send frame'):
                 data = pickle.dumps(frame)
@@ -135,7 +103,6 @@ def producer():
                         cv2_resized = True
                         # wait minimally since interp takes time anyhow
                         cv2.waitKey(1)
-            events = None # empty frame out
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     except KeyboardInterrupt:

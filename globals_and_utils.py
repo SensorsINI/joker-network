@@ -2,16 +2,13 @@
 import logging
 
 
-LOGGING_LEVEL = logging.WARNING
+LOGGING_LEVEL = logging.INFO
 MAXB = 10000000
 PORT = 12000
 IMSIZE=224
 MODEL='afnorm224v1.h5'
-EVENT_COUNT = 6000
-CLIP_VALUE = 3
-RECTIFY_POLARITIES = True
-RANGE_NORMALIZED_FRAME = 255
-histrange = [(0, v) for v in (IMSIZE, IMSIZE)] # allocate DVS frame histogram to desired output size
+EVENT_COUNT_PER_FRAME = 3000
+EVENT_COUNT_CLIP_VALUE = 3
 SHOW_DVS_OUTPUT=True
 
 

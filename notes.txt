@@ -1,0 +1,15 @@
+consumer (with tflite model)
+
+recieve UDP n=985: 21.36ms +/- 146.58ms (median 6.31ms, min 16.69us max 2.91s)
+unpickle and normalize/reshape n=984: 159.43us +/- 50.57us (median 145.91us, min 99.90us max 526.19us)
+run CNN n=984: 4.21ms +/- 923.17us (median 4.06ms, min 2.59ms max 8.71ms)
+process output vector n=984: 24.80us +/- 4.90us (median 23.84us, min 14.78us max 95.84us)
+transmit to serial port n=984: 6.14ms +/- 110.32ms (median 34.69us, min 22.65us max 2s)
+
+producer
+
+== Timing statistics ==
+accumulate DVS n=4961: 31.68ms +/- 255.50ms (median 3.64ms, min 222.44us max 3.81s)
+normalization n=4960: 1.98ms +/- 725.19us (median 1.81ms, min 870.70us max 7.57ms)
+send frame n=4960: 106.79us +/- 29.88us (median 100.61us, min 65.09us max 874.04us)
+show DVS image n=4960: 269.74us +/- 161.15us (median 254.87us, min 170.23us max 10.54ms)

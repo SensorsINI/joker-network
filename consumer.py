@@ -70,7 +70,7 @@ if __name__ == '__main__':
         with Timer('transmit to serial port'):
             if dec==1: # joker
                 arduino_serial_port.write(b'1')
-                time.sleep(1)
+                time.sleep(FINGER_OUT_TIME_S)
             else:
                 arduino_serial_port.write(b'0')
 

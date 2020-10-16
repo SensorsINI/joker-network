@@ -11,6 +11,7 @@ MODEL_LITE='joker.tflite'
 EVENT_COUNT_PER_FRAME = 3000
 EVENT_COUNT_CLIP_VALUE = 3
 SHOW_DVS_OUTPUT=True
+FINGER_OUT_TIME_S=2
 
 
 class CustomFormatter(logging.Formatter):

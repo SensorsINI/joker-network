@@ -8,9 +8,8 @@ import pickle
 import cv2
 import sys
 import tensorflow as tf
-from keras.models import load_model
+# from keras.models import load_model
 import serial
-from datetime import datetime
 import time
 import socket
 import numpy as np
@@ -31,7 +30,15 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 address = ("", PORT)
 server_socket.bind(address)
 log.info('loading CNN model {}'.format(MODEL))
-model = load_model(MODEL)
+
+# model = load_model(MODEL)
+# tflite interpreter
+interpreter = tf.lite.Interpreter(model_path=MODEL_LITE)
+interpreter.allocate_tensors()
+# Get input and output tensors.
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
 serial_port = sys.argv[1]
 log.info('opening serial port {} to send commands to finger'.format(serial_port))
 arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
@@ -46,9 +53,13 @@ if __name__ == '__main__':
 
         with Timer('unpickle and normalize/reshape'):
             img = pickle.loads(receive_data)
-            img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
+            # img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
+            img = (1./255)*np.reshape(img, [1,IMSIZE, IMSIZE,1])
         with Timer('run CNN'):
-            pred = model.predict(img[None, :])
+            interpreter.set_tensor(input_details[0]['index'], np.array(img,dtype=np.float32))
+            interpreter.invoke()
+            pred = interpreter.get_tensor(output_details[0]['index'])
+            # pred = model.predict(img[None, :])
         with Timer('process output vector'):
             dec = np.argmax(pred[0])
             joker_prob=pred[0][1]

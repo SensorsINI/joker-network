@@ -24,6 +24,7 @@ const String HELP = "Send char '1' to activate solenoid finger, '0' to relax it\
 
 const int FINGER_PIN = 3;  // setting this high will activate solenoide finger. But it should NOT be left high long, or the solenoide can burn out
 const int BUTTON_PIN = 8; // pushing button will pull pin low (pin is configured input pullup with button tied to ground on other side of button)
+const int LATENCY_TEST_PIN=6; // wire to ground through a switch to test finger latency
 
 const int PULSE_TIME_MS = 150; // pulse time in ms to drive finger out
 const int  HOLD_DUTY_CYCLE = 30; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
@@ -31,10 +32,10 @@ const int HEARTBEAT_PERIOD_MS=500; // half cycle of built-in LED heartbeat to sh
 
 const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0'; // python sends character '1' to activate finger, '0' to relax it
 const char CMD_INC_PT='+', CMD_DEC_PT='-', CMD_INC_DC=']', CMD_DEC_DC='[';  // to tune values
-const int STATE_IDLE = 0, STATE_FINGER_PUSHING_OUT = 1, STATE_FINGER_HOLDING = 2;
+const byte STATE_IDLE = 0, STATE_FINGER_PUSHING_OUT = 1, STATE_FINGER_HOLDING = 2;
 
 unsigned long fingerActivatedTime = 0, heartbeatToggleTimeMs=0;
-int state = 0, previousState = state, previousButState = HIGH;
+byte state = 0, previousState = state, previousButState = HIGH;
 bool heartbeatFlag=0;
 
 unsigned long pulseTimeMs; // read from EEPROM
@@ -47,6 +48,7 @@ void setup()
   digitalWrite(FINGER_PIN,HIGH);  // HIGH turns OFF the finger solenoid by pulling power MOSFET gate low
   pinMode(BUTTON_PIN, INPUT_PULLUP); // button activates solenoid
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LATENCY_TEST_PIN, INPUT_PULLUP);
 
   // check EEPROM values for pulses time and duty cycle
   byte b=EEPROM.read(0);
@@ -88,7 +90,7 @@ void loop()
     switch (c) {
       case CMD_ACTIVATE_FINGER:
         state = STATE_FINGER_PUSHING_OUT;
-        break;
+         break;
       case CMD_RELAX_FINGER:
         state = STATE_IDLE;
         break;
@@ -152,6 +154,11 @@ void loop()
         state = STATE_FINGER_HOLDING;
         if (DEBUG) Serial.println("now holding finger out");
       }
+      if(digitalRead(LATENCY_TEST_PIN)==0){
+          long latency=millis()-fingerActivatedTime;
+          Serial.print("measured latency in ms: ");
+          Serial.println(latency);
+      }
       break;
     case STATE_FINGER_HOLDING:
       analogWrite(FINGER_PIN, 255-holdDutyCycle); // invert because pin output is active low to turn on solenoid current
@@ -160,11 +167,13 @@ void loop()
   previousState = state;
   previousButState=but;
 
+
   if(millis()-heartbeatToggleTimeMs>HEARTBEAT_PERIOD_MS){
     digitalWrite(LED_BUILTIN, heartbeatFlag);
     heartbeatFlag=!heartbeatFlag;
     heartbeatToggleTimeMs=millis();
+    watchdog.reset();
     if(DEBUG) Serial.println("heartbeat");
   }
-  watchdog.reset();
+ 
 }

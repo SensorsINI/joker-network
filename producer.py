@@ -15,7 +15,6 @@ import numpy.ma as ma
 import socket
 import numpy as np
 from globals_and_utils import *
-from timers import Timer
 from engineering_notation import EngNumber  as eng # only from pip
 
 log=my_logger(__name__)

@@ -53,13 +53,44 @@ example: python -m consumer.py /dev/ttyUSB0
 python -m producer
 ```
 
-## Firmware
+# Firmware
 
 ArduinoControl/trixsie-firmware/trixsie-firmware.ino
 
+# Training
+
 joker-classify-network.py is for training.  
-command python joker-classify-network.py imgdir weightfilename resize
+
+```
+python joker-classify-network.py imgdir weightfilename resize
+```
+
 imgdir is where your imgs are organized with three sub-folders: train/, valid/, and test/.  
 Each sub-folder contains two sub-folders, class1/ and class2/. Class1/ includes non-joker images and class2/ contains joker images.
 
 joker-classify-accuracy.py is for getting accuracy with pre-trained model.  
+
+
+# Results
+
+## Runtime latencies
+
+### consumer (with tflite model)
+
+```
+overall consumer loop n=16266: 19.07ms +/- 104.09ms (median 10.45ms, min 3.81ms max 3.25s)
+recieve UDP n=16266: 12.59ms +/- 104.03ms (median 4.15ms, min 16.93us max 3.24s)
+unpickle and normalize/reshape n=16265: 160.13us +/- 43.65us (median 150.44us, min 87.74us max 672.34us)
+run CNN n=16265: 4.21ms +/- 901.34us (median 4.05ms, min 2.61ms max 11.24ms)
+```
+
+###producer
+
+```
+== Timing statistics ==
+== Timing statistics ==
+accumulate DVS n=16268: 12.32ms +/- 103.92ms (median 3.75ms, min 211.24us max 3.24s)
+normalization n=16267: 2.01ms +/- 743.03us (median 1.84ms, min 854.73us max 8.45ms)
+send frame n=16267: 108.55us +/- 27.40us (median 103us, min 65.57us max 475.41us)
+show DVS image n=16267: 4.28ms +/- 649.69us (median 4.15ms, min 3ms max 12.77ms)
+```

@@ -98,12 +98,10 @@ def producer():
                     # img = ((frame - min) / (np.max(frame) - min))
                     cv2.imshow('DVS', frame.astype('float')/255)
                     if not cv2_resized:
-                        cv2.resizeWindow('DVS', 800, 600)
+                        cv2.resizeWindow('DVS', 600, 600)
                         cv2_resized = True
-                        # wait minimally since interp takes time anyhow
-                        cv2.waitKey(1)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
     except KeyboardInterrupt:
         device.shutdown()
 

@@ -26,8 +26,8 @@ const int FINGER_PIN = 3;  // setting this high will activate solenoide finger. 
 const int BUTTON_PIN = 8; // pushing button will pull pin low (pin is configured input pullup with button tied to ground on other side of button)
 const int LATENCY_TEST_PIN=6; // wire to ground through a switch to test finger latency
 
-const int PULSE_TIME_MS = 150; // pulse time in ms to drive finger out
-const int  HOLD_DUTY_CYCLE = 30; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
+const int PULSE_TIME_MS = 40; // pulse time in ms to drive finger out
+const int  HOLD_DUTY_CYCLE = 50; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
 const int HEARTBEAT_PERIOD_MS=500; // half cycle of built-in LED heartbeat to show we are running
 
 const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0'; // python sends character '1' to activate finger, '0' to relax it
@@ -52,14 +52,14 @@ void setup()
 
   // check EEPROM values for pulses time and duty cycle
   byte b=EEPROM.read(0);
-  if(b!=0) {
+  if(b==0) { // if eeprom holds zero we assume it has not stored a value yet, so store default value
     EEPROM.write(0, PULSE_TIME_MS); // if uninitialized, set the value
     pulseTimeMs=PULSE_TIME_MS;
   }else{
     pulseTimeMs=b; // otherwise read it
   } 
   b=EEPROM.read(1);
-  if(b!=0) {
+  if(b==0) {
     EEPROM.write(1, HOLD_DUTY_CYCLE);
     holdDutyCycle=HOLD_DUTY_CYCLE;
   }else{
@@ -102,7 +102,7 @@ void loop()
         break;
       case CMD_INC_DC:
         if(holdDutyCycle<255) holdDutyCycle++;
-        EEPROM.write(0, holdDutyCycle);
+        EEPROM.write(1, holdDutyCycle);
         Serial.print("holdDutyCycle: ");
         Serial.println(holdDutyCycle);
         break;
@@ -114,7 +114,7 @@ void loop()
         break;
       case CMD_DEC_DC:
         if(holdDutyCycle>0) holdDutyCycle--;
-        EEPROM.write(0, holdDutyCycle);
+        EEPROM.write(1, holdDutyCycle);
         Serial.print("holdDutyCycle: ");
         Serial.println(holdDutyCycle);
         break;

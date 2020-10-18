@@ -57,6 +57,19 @@ python -m producer
 
 ArduinoControl/trixsie-firmware/trixsie-firmware.ino
 
+Output on startup on serial port is
+```
+*** Trixsie Oct 2020 V1.0
+Compile date and time: Oct 18 2020 17*** Trixsie Oct 2020 V1.0
+Compile date and time: Oct 18 2020 17:51:49
+Compiled with DEBUG=false
+Finger pulse time in ms: 150
+Finger hold duty cycle of 255: 30
+Send char '1' to activate solenoid finger, '0' to relax it
++/- increase/decrease pulse time, ]/[ increase/decrease hold duty cycle
+
+```
+
 # Training
 
 joker-classify-network.py is for training.  

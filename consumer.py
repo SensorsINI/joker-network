@@ -105,11 +105,11 @@ if __name__ == '__main__':
                 arduino_serial_port.write(b'1')
                 finger_out_time=time.time()
                 state=STATE_FINGER_OUT
-                # log.info('sent finger OUT')
+                log.info('sent finger OUT')
             elif state==STATE_FINGER_OUT and time.time()-finger_out_time>FINGER_OUT_TIME_S:
                 arduino_serial_port.write(b'0')
                 state=STATE_IDLE
-                # log.info('sent finger IN')
+                log.info('sent finger IN')
             else:
                 pass
 

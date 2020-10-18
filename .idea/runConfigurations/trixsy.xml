@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="trixsy" type="CompoundRunConfigurationType">
+    <toRun name="consumer ubuntu /dev/ttyUSB0" type="PythonConfigurationType" />
+    <toRun name="producer" type="PythonConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>

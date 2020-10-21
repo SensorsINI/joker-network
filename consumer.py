@@ -88,7 +88,8 @@ def show_frame(frame,name, resized_dict):
 
 if __name__ == '__main__':
     while True:
-        with Timer('overall consumer loop'):
+        timestr = time.strftime("%Y%m%d-%H%M")
+        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
             with Timer('recieve UDP'):
                 # inputready,_,_ = select([server_socket],[],[],.1)
                 # if len(inputready)==0:

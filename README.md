@@ -24,13 +24,16 @@ Test environment:
  **Make a conda environment**, activate it, then in it install the libraries.
  
 ```
-pip install opencv-python tensorflow keras pyserial pyaer engineering_notation
+pip install opencv-python tensorflow keras pyserial pyaer engineering_notation matplotlib
 ```
 or
 ```
 conda install keras tensorflow opencv numpy pyserial -c conda-forge
 pip install pyaer engineering_notation
 ```
+
+#### Note about pip vs conda
+For some reason, pip is preferred over conda for installing opencv and tensorflow. At least at time of this file.
 
 ### pyaer
 pyaer needs https://github.com/inivation/libcaer. Clone it, then follow instructions in its README to install libcaer. 

@@ -5,3 +5,4 @@ numpy
 pyserial
 pyaer # needs libcaer; see https://github.com/duguyue100/pyaer
 engineering_notation
+matplotlib

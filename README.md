@@ -1,6 +1,16 @@
 # joker-network
 
-Host side code for the Trixsy card magic robot.
+Host side code and firmware for the Trixsy card finding magic robot.
+
+[![Watch the video](https://img.youtube.com/vi/Y0Crn4DU17M/hqdefault.jpg)](https://youtu.be/Y0Crn4DU17M)
+
+Trixsy thrusts out its finger at the exactly correct moment as the cards are riffled past its finger.
+
+Trixsy uses a 346x260 DVS event camera designed by the Sensors group (and sold by inivation.com) to generate constant count frames at hundreds of Hz and with a latency of  less than 1 ms. Trixy is written in python. Trisy uses https://github.com/duguyue100/pyaer to capture events in a producer process, and sends the frames to the consumer process by local UDB socket. A TensorflowLite 2.0 AlexNet CNN detects the selected card in about 4 ms. The PC sends the command to the Arduino Nano, which turns off an NPN bipolar which lets the power MOSFET gate go up to 24V. The MOSFET lets the charge stored on an 11F ultra cap array charged to 24V dump onto a solenoid to push our the finger lever in about 20 ms. Trixsy's whole finger is powered by USB bus power (24V comes from 5V VBUS via $2 DC-DC converter.)
+
+Trixsy was developed by visiting CSC student Shasha Guo, PhD students Min Liu and Yuhuang Hu, and Tobi Delbruck. Thanks for filming to Joao Sacramento and Johannes Oswald.
+
+See https://sensors.ini.uzh.ch for latest news and more demos
 
 # Requirements:
 Test environment:

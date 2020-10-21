@@ -15,13 +15,13 @@ See https://sensors.ini.uzh.ch for latest news and more demos
 # Requirements:
 Test environment:
 
- - OS: Mac OSX 10.15.7 or Ubuntu 18.04
+ - OS: Fully tested on Ubuntu 18.04, partially on Mac OSX 10.15.7 
  - python: 3.8
  - tensorflow: 2.3.1
  - Keras: 2.3.1
  - pyaer https://github.com/duguyue100/pyaer
  
- Make a conda environment, then in it install the libraries.
+ **Make a conda environment**, activate it, then in it install the libraries.
  
 ```
 pip install opencv-python tensorflow keras pyserial pyaer engineering_notation
@@ -48,9 +48,9 @@ there might be some errors about openMP reported.
 
 # How to run it?
  1. connect hardware: DVS to usb and Arduino to USB.
- 1. Find out which serial port device the Arduino appears on. You can use dmesg on linux.
+ 1. Find out which serial port device the Arduino appears on. You can use dmesg on linux. You can put the serial port into _globals_and_utils.py_ to avoid adding as argument.
  1. open two terminals
- 1. run consumerudp.py
+ 1. run consumer.py
 
 ```shell script
 python -m consumer  arduinoPort

@@ -8,7 +8,7 @@ Trixsy thrusts out its finger at the exactly correct moment as the cards are rif
 
 Trixsy uses a 346x260 DVS event camera designed by the Sensors group (and sold by inivation.com) to generate constant count frames at hundreds of Hz and with a latency of  less than 1 ms. Trixy is written in python. Trisy uses https://github.com/duguyue100/pyaer to capture events in a producer process, and sends the frames to the consumer process by local UDB socket. A TensorflowLite 2.0 AlexNet CNN detects the selected card in about 4 ms. The PC sends the command to the Arduino Nano, which turns off an NPN bipolar which lets the power MOSFET gate go up to 24V. The MOSFET lets the charge stored on an 11F ultra cap array charged to 24V dump onto a solenoid to push our the finger lever in about 20 ms. Trixsy's whole finger is powered by USB bus power (24V comes from 5V VBUS via $2 DC-DC converter.)
 
-Trixsy was developed by visiting CSC student Shasha Guo, PhD students Min Liu and Yuhuang Hu, and Tobi Delbruck. Thanks for filming to Joao Sacramento and Johannes Oswald.
+Trixsy was developed by Tobi Delbruck, visiting CSC student Shasha Guo, and PhD students Min Liu and Yuhuang Hu. Thanks for filming to Joao Sacramento and Johannes Oswald.
 
 See https://sensors.ini.uzh.ch for latest news and more demos
 

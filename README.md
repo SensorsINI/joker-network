@@ -33,7 +33,7 @@ pip install pyaer engineering_notation
 ```
 
 ### pyaer
-pyaer needs libcaer. Clone it, then follow instructions in its README to install libcaer. 
+pyaer needs https://github.com/inivation/libcaer. Clone it, then follow instructions in its README to install libcaer. 
 
 
 

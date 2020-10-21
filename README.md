@@ -47,21 +47,18 @@ there might be some errors about openMP reported.
 
 
 # How to run it?
- 1. connect hardware: DVS to usb and Arduino to USB.
+ 1. connect hardware: DVS to USB and Arduino to USB.
  1. Find out which serial port device the Arduino appears on. You can use dmesg on linux. You can put the serial port into _globals_and_utils.py_ to avoid adding as argument.
- 1. open two terminals
- 1. run consumer.py
-
+ 1. In first terminal run producer
+```shell script
+python -m producer
+```
+ 2. In a second terminal, run consumer
 ```shell script
 python -m consumer  arduinoPort
 example: python -m consumer.py /dev/ttyUSB0
 ```
 
- 1. run producerudp.py
-
-```shell script
-python -m producer
-```
 
 # Firmware
 

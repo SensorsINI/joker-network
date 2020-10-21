@@ -30,17 +30,17 @@ def cleanup():
 
 atexit.register(cleanup)
 
-print("Device ID:", device.device_id)
+print("DVS USB ID:", device.device_id)
 if device.device_is_master:
-    print("Device is master.")
+    print("DVS is master.")
 else:
-    print("Device is slave.")
-print("Device Serial Number:", device.device_serial_number)
-print("Device String:", device.device_string)
-print("Device USB bus Number:", device.device_usb_bus_number)
-print("Device USB device address:", device.device_usb_device_address)
-print("Device size X:", device.dvs_size_X)
-print("Device size Y:", device.dvs_size_Y)
+    print("DVS is slave.")
+print("DVS Serial Number:", device.device_serial_number)
+print("DVS String:", device.device_string)
+print("DVS USB bus Number:", device.device_usb_bus_number)
+print("DVS USB device address:", device.device_usb_device_address)
+print("DVS size X:", device.dvs_size_X)
+print("DVS size Y:", device.dvs_size_Y)
 print("Logic Version:", device.logic_version)
 print("Background Activity Filter:",
       device.dvs_has_background_activity_filter)
@@ -96,7 +96,7 @@ def producer():
                 with Timer('show DVS image'):
                     # min = np.min(frame)
                     # img = ((frame - min) / (np.max(frame) - min))
-                    cv2.imshow('DVS', frame.astype('float')/255)
+                    cv2.imshow('DVS', 1-frame.astype('float')/255)
                     if not cv2_resized:
                         cv2.resizeWindow('DVS', 600, 600)
                         cv2_resized = True

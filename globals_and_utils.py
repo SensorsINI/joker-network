@@ -6,21 +6,20 @@ import numpy as np
 import atexit
 from engineering_notation import EngNumber  as eng # only from pip
 
-
 LOGGING_LEVEL = logging.INFO
-MAXB = 10000000
-PORT = 12000
-IMSIZE=224
-MODEL='afnorm224v1.h5'
-MODEL_LITE='joker.tflite'
-EVENT_COUNT_PER_FRAME = 3000
-EVENT_COUNT_CLIP_VALUE = 3
+PORT = 12000 # UDP port used to send frames from producer to consumer
+IMSIZE=224 # input image size, must match model
+# MODEL='afnorm224v1.h5'
+MODEL_LITE='joker.tflite' # joker network model
+EVENT_COUNT_PER_FRAME = 3000 # events per frame
+EVENT_COUNT_CLIP_VALUE = 3 # full count value for colleting histograms of DVS events
 SHOW_DVS_OUTPUT=True
-FINGER_OUT_TIME_S=5
+FINGER_OUT_TIME_S=2 # time to hold out finger when joker is detected
+DATA_FOLDER='data' # new samples stored here
 NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER=6
-DATA_FOLDER='data'
 JOKERS_FOLDER=DATA_FOLDER+'/jokers'
 NON_JOKERS_FOLDER= DATA_FOLDER + '/nonjokers'
+SERIAL_PORT="/dev/ttyUSB0"  # port to talk to arduino finger controller
 
 class CustomFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""

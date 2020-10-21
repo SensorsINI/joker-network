@@ -30,7 +30,7 @@ server_socket:socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 address = ("", PORT)
 server_socket.bind(address)
 
-log.info('loading CNN model {}'.format(MODEL))
+log.info('loading CNN model {}'.format(MODEL_LITE))
 
 # model = load_model(MODEL)
 # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
@@ -40,7 +40,14 @@ interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-serial_port = sys.argv[1]
+if len(sys.argv)>2:
+    log.error('too many arguments\nUsage producer.py [serial_port]')
+elif len(sys.argv)==2:
+    serial_port = sys.argv[1]
+else:
+    serial_port=SERIAL_PORT
+
+
 log.info('opening serial port {} to send commands to finger'.format(serial_port))
 arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
 udpbufsize = IMSIZE * IMSIZE+1000

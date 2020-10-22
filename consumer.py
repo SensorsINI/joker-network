@@ -75,6 +75,7 @@ log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('
 
 def show_frame(frame,name, resized_dict):
     """ Show the frame in named cv2 window and handle resizing
+
     :param frame: 2d array of float
     :param name: string name for window
     """
@@ -85,6 +86,26 @@ def show_frame(frame,name, resized_dict):
         resized_dict[name] = True
         # wait minimally since interp takes time anyhow
         cv2.waitKey(1)
+
+def write_next_image(dir:str, idx:int, img):
+    """ Saves data sample image
+
+    :param dir: the folder
+    :param idx: the current index number
+    :param img: the image to save
+    :returns: the next index
+    """
+    while True:
+        n=f'{dir}/{idx:04d}.png'
+        if not os.isfile(n):
+            break
+        idx+=1
+    try:
+        cv2.imwrite(n, img)
+    except Exception as e:
+        log.error(f'error saving {n}: caught {e}')
+    return idx
+
 
 if __name__ == '__main__':
     while True:
@@ -123,27 +144,18 @@ if __name__ == '__main__':
 
             save_img= (255 *img.squeeze()).astype('uint8')
             if dec==1: # joker
-                n=f'{JOKERS_FOLDER}/{next_joker_index:04d}.png'
-                cv2.imwrite(n, save_img)
-                next_joker_index+=1
+                # find next name that is not taken yet
+                next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img)
                 show_frame(save_img, 'joker', cv2_resized)
                 non_joker_window_number=0
                 for i in saved_non_jokers:
-                    n = f'{NON_JOKERS_FOLDER}/{next_non_joker_index:04d}.png'
-                    cv2.imwrite(n,i)
-                    next_non_joker_index+=1
+                    next_non_joker_index= write_next_image(NON_JOKERS_FOLDER, next_non_joker_index, save_img)
                     show_frame(i,f'nonjoker{non_joker_window_number}', cv2_resized)
                     non_joker_window_number+=1
                 saved_non_jokers.clear()
             else:
                 if random.random()<.03: # append random previous images to not just get previous almost jokers
                     saved_non_jokers.append(save_img)
-
-            # if True:
-            #     scale=20
-            #     njoker_star=int(joker_prob*scale)
-            #     log.info('joker prediction: {}{} {}'.format('*'*njoker_star,' '*(scale-njoker_star),'(JOKER)' if dec==1 else '        '))
-
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 

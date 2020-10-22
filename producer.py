@@ -56,9 +56,9 @@ histrange = [(0, v) for v in (IMSIZE, IMSIZE)] # allocate DVS frame histogram to
 npix=IMSIZE*IMSIZE
 
 def producer():
-    if SHOW_DVS_OUTPUT:
-        cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-    cv2_resized=False
+    cv2_resized = False
+    last_cv2_frame_time = time.time()
+
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_file = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
@@ -96,15 +96,19 @@ def producer():
                     client_socket.sendto(data, udp_address)
 
                 if SHOW_DVS_OUTPUT:
-                    with Timer('show DVS image'):
-                        # min = np.min(frame)
-                        # img = ((frame - min) / (np.max(frame) - min))
-                        cv2.imshow('DVS', 1-frame.astype('float')/255)
-                        if not cv2_resized:
-                            cv2.resizeWindow('DVS', 600, 600)
-                            cv2_resized = True
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
-                            break
+                    t=time.time()
+                    if t-last_cv2_frame_time>1./MAX_SHOWN_DVS_FRAME_RATE_HZ:
+                        last_cv2_frame_time=t
+                        with Timer('show DVS image'):
+                            # min = np.min(frame)
+                            # img = ((frame - min) / (np.max(frame) - min))
+                            cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
+                            cv2.imshow('DVS', 1-frame.astype('float')/255)
+                            if not cv2_resized:
+                                cv2.resizeWindow('DVS', 600, 600)
+                                cv2_resized = True
+                            if cv2.waitKey(1) & 0xFF == ord('q'):
+                                break
     except KeyboardInterrupt:
         device.shutdown()
 
@@ -114,7 +118,7 @@ if __name__ == '__main__':
     try:
         producer()
     except Exception as e:
-        log.error('Error', str(e))
+        log.error(f'Error: {e}')
         cleanup()
         sys.exit()
     else:

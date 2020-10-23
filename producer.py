@@ -7,6 +7,7 @@ import atexit
 import pickle
 
 from pyaer.davis import DAVIS
+from pyaer import libcaer
 import cv2
 import sys
 import math
@@ -47,7 +48,24 @@ print("Background Activity Filter:",
 print("Color Filter", device.aps_color_filter, type(device.aps_color_filter))
 print(device.aps_color_filter == 1)
 
-device.start_data_stream()
+# device.start_data_stream()
+assert(device.send_default_config())
+# attempt to set up USB host buffers for acquisition thread to minimize latency
+assert (device.set_config(
+    libcaer.CAER_HOST_CONFIG_USB,
+    libcaer.CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
+    8))
+assert (device.set_config(
+    libcaer.CAER_HOST_CONFIG_USB,
+    libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
+    4096))
+assert(device.data_start())
+assert(device.set_config(
+    libcaer.CAER_HOST_CONFIG_PACKETS,
+    libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
+    1000))
+assert(device.set_data_exchange_blocking())
+
 # setting bias after data stream started
 device.set_bias_from_json("./configs/davis346_config.json")
 xfac=float(IMSIZE)/device.dvs_size_X
@@ -58,7 +76,7 @@ npix=IMSIZE*IMSIZE
 def producer():
     cv2_resized = False
     last_cv2_frame_time = time.time()
-
+    frame=None
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_file = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
@@ -78,13 +96,14 @@ def producer():
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
 
                 with Timer('normalization'):
-                    # take DVS coordinates and scale x and y to output frame dimensions using flooring math
-                    events[:,1]=np.floor(events[:,1]*xfac)
-                    events[:,2]=np.floor(events[:,2]*yfac)
-                    frame, _, _ = np.histogram2d(events[:, 2], events[:, 1], bins=(IMSIZE, IMSIZE), range=histrange)
-                    fmax_count=np.max(frame)
-                    frame[frame > EVENT_COUNT_CLIP_VALUE]=EVENT_COUNT_CLIP_VALUE
-                    frame= (255. / EVENT_COUNT_CLIP_VALUE) * frame # max pixel will have value 255
+                    # if frame is None: # debug timing
+                        # take DVS coordinates and scale x and y to output frame dimensions using flooring math
+                        events[:,1]=np.floor(events[:,1]*xfac)
+                        events[:,2]=np.floor(events[:,2]*yfac)
+                        frame, _, _ = np.histogram2d(events[:, 2], events[:, 1], bins=(IMSIZE, IMSIZE), range=histrange)
+                        fmax_count=np.max(frame)
+                        frame[frame > EVENT_COUNT_CLIP_VALUE]=EVENT_COUNT_CLIP_VALUE
+                        frame= (255. / EVENT_COUNT_CLIP_VALUE) * frame # max pixel will have value 255
 
                 # statistics
                 focc=np.count_nonzero(frame)

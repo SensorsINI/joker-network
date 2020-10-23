@@ -97,7 +97,7 @@ def write_next_image(dir:str, idx:int, img):
     """
     while True:
         n=f'{dir}/{idx:04d}.png'
-        if not os.isfile(n):
+        if not os.path.isfile(n):
             break
         idx+=1
     try:

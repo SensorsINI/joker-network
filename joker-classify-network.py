@@ -1,46 +1,21 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os,sys
-
-import tensorflow as tf
-from tensorflow import keras
-
-import os, shutil, random, glob
-import cv2
-import numpy as np
-import pandas as pd
-
 import math
-
+import tensorflow as tf
+import cv2
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-# CUDA_VISIBLE_DEVICES = 2
-
-# import keras
-from keras.datasets import cifar10
-from keras.optimizers import SGD
-from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
-import matplotlib.pyplot as plt
-
-from keras.models import Model, load_model
-from keras.utils import np_utils
-# import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
-from glob import glob
+from globals_and_utils import *
 
+log=my_logger(__name__)
+log.info(f'Tensorflow version {tf.version.VERSION}')
 
-
-print(tf.version.VERSION)
-
-
-resize = int(sys.argv[3])
-# imgdir = "./train/"
-imgdir = sys.argv[1] 
-print('dataset path', imgdir)
+resize = IMSIZE
+imgdir = TRAIN_DATA_FOLDER
+log.info(f'dataset path: TRAIN_DATA_FOLDER={imgdir}')
 
 
 def get_img(img_paths, img_size):
@@ -65,10 +40,13 @@ def get_X_batch(X_path, batch_size, img_size):
 # images_aug = seq.augment_images(images) #得到增强后的图片ndarray
 
 
-classnum=2
+num_classes=2
 def load_data():
- 
-    print('---------------', dataset_size)
+    import os, os.path
+    dataset_size=len(os.listdir(imgdir))
+    testsize=math.floor(dataset_size*.1)
+
+    log.info('---------------', dataset_size)
     train_data = np.empty((dataset_size - testsize, resize, resize, 1), dtype="uint8")
     train_label = np.empty((dataset_size - testsize,), dtype="int32")
     test_data = np.empty((testsize, resize, resize, 1), dtype="uint8")
@@ -82,13 +60,9 @@ def load_data():
         imgf = np.reshape(imgf, (resize, resize, 1))
    
         if i < testsize:
-          
             test_data[i] = imgf
             test_label[i] = fileid
-  
         else:
-       
-            
             train_data[i-testsize] = imgf
             train_label[i-testsize] = fileid
         
@@ -109,7 +83,7 @@ def get_im_cv2(paths, img_size, color_type=1, normalize=False):
     # Load as grayscale
     # imgs = []
     i = 0
-    X = np.zeros((len(img_paths),img_size,img_size,color_type),dtype=np.uint8)
+    X = np.zeros((len(paths),img_size,img_size,color_type),dtype=np.uint8)
     for path in paths:
         
         if color_type == 1:
@@ -154,27 +128,6 @@ def get_train_batch(X_train, y_train, batch_size, img_size, color_type, is_argum
             # 最重要的就是这个yield，它代表返回，返回以后循环还是会继续，然后再返回。就比如有一个机器一直在作累加运算，但是会把每次累加中间结果告诉你一样，直到把所有数加完
             yield(np.array(x), np.array(y))
 
-
-#LeNet-5
-# model = Sequential()
-# model.add(Conv2D(filters=6, kernel_size=(5,5), 
-#                  padding='valid', 
-#                  input_shape=(184, 184, 3), 
-#                  activation='tanh'))
-# model.add(MaxPooling2D(pool_size=(2,2)))
-# model.add(Conv2D(filters=16, kernel_size=(5,5), 
-#                  padding='valid', 
-#                  activation='tanh')) #
-# model.add(MaxPooling2D(pool_size=(2,2)))
-# model.add(Flatten())
-# model.add(Dense(120, activation='tanh'))
-# model.add(Dense(84, activation='tanh'))
-# model.add(Dense(2, activation='softmax')) #softmax函数做激活函数 e^x/(sum(e^x))
-
-# sgd = SGD(lr=0.01, decay=0, momentum=0, nesterov=True) #采用随机梯度下降法作为优化算法
-# model.compile(loss='binary_crossentropy',
-#               optimizer=sgd, 
-#               metrics=['accuracy'])
 
 # AlexNet
 def create_model():
@@ -221,35 +174,29 @@ def create_model():
     model.add(Dropout(0.5))
 
     # Output Layer
-    model.add(Dense(classnum, activation='softmax', name='output'))
+    model.add(Dense(num_classes, activation='softmax', name='output'))
 
     return model
-# model.add(Activation('softmax'))
 
 
 model = create_model()
-
-#model = load_model('alexnet184grayv22.h5')
-model.summary()
-
-
 model.compile(loss='categorical_crossentropy',
               optimizer='sgd',
               metrics=['accuracy'])
-# model.summary()
+model.summary()
 
 train_batch_size = 128
 valid_batch_size = 64
 test_batch_size = 32
 
+log.info('making training generator')
 train_datagen = ImageDataGenerator( #实例化
-    rescale=1./255,
-    rotation_range = 90,  #图片随机转动的角度
-    width_shift_range = 0.2, #图片水平偏移的幅度
-    height_shift_range = 0.2, #图片竖直偏移的幅度
-    zoom_range = 0.2,
+    rescale=1./255, # todo check this
+    rotation_range = 30,  #图片随机转动的角度
+    width_shift_range = 0.3, #图片水平偏移的幅度
+    height_shift_range = 0.3, #图片竖直偏移的幅度
+    zoom_range = 0.5,
     horizontal_flip=True) #随机放大或缩小
-
 
 train_generator = train_datagen.flow_from_directory(
         imgdir + '/train/',
@@ -258,6 +205,7 @@ train_generator = train_datagen.flow_from_directory(
         class_mode='categorical',
         color_mode='grayscale')
 
+log.info('making validation generator')
 test_datagen = ImageDataGenerator(rescale=1./255,) #测试集不做增强
 valid_generator = test_datagen.flow_from_directory(
         imgdir + '/valid/',
@@ -266,6 +214,7 @@ valid_generator = test_datagen.flow_from_directory(
         class_mode='categorical',
         color_mode='grayscale')
 
+log.info('making test generator')
 test_generator = test_datagen.flow_from_directory(
         imgdir + '/test/',
         target_size=(resize, resize),
@@ -274,31 +223,44 @@ test_generator = test_datagen.flow_from_directory(
         color_mode='grayscale')
 
 
-checkpoint_path = "training_2/cp.ckpt"
+checkpoint_path = "training/cp.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
-
-
 earlyStopping = EarlyStopping(monitor='val_loss', patience=10, verbose=0, mode='min')
-mcp_save = ModelCheckpoint('.mdl_wts.hdf5', save_best_only=True, monitor='val_loss', mode='min')
+# mcp_save = ModelCheckpoint('model_checkpoint.hdf5', save_best_only=True, monitor='val_loss', mode='min')
 
-color_type = 1
-
-
-
-result = model.fit_generator(train_generator, 
+log.info('starting training')
+result = model.fit(train_generator,
           steps_per_epoch=300, 
           epochs=100, verbose=1,
           validation_data=valid_generator,
           validation_steps=25,
-          callbacks=[mcp_save],
+          # callbacks=[mcp_save],
           # max_queue_size=capacity,
           shuffle = True,
           workers=1)
 
 
 
-model.save(sys.argv[2])
+timestr = time.strftime("%Y%m%d-%H%M")
+model_folder= f'joker_net_{timestr}'
 
-import datetime
-print("{} Start testing...".format(datetime.datetime.now()))
+log.info(f'saving model to folder {model_folder}')
+model.save(model_folder)
+
+log.info('converting model to tensorflow lite model')
+converter = tf.lite.TFLiteConverter.from_saved_model(model_folder) # path to the SavedModel directory
+tflite_model = converter.convert()
+tflite_model_name=f'{model_folder}.tflite'
+
+log.info(f'saving tflite model as {tflite_model_name}')
+with open(tflite_model_name, 'wb') as f:
+  f.write(tflite_model)
+
+log.info('evaluating test set accuracy')
+test_generator.reset()
+loss, acc = model.evaluate(test_generator, verbose=2)
+log.info("test set accuracy: {:5.2f}%".format(100*acc))
+
+log.info('done training')
+
 

@@ -82,19 +82,68 @@ Send char '1' to activate solenoid finger, '0' to relax it
 
 # Training
 
-joker-classify-network.py is for training.  
+_joker-classify-network.py_ is for training.  
 
 ```
 python joker-classify-network.py imgdir weightfilename resize
 ```
 
-imgdir is where your imgs are organized with three sub-folders: train/, valid/, and test/.  
-Each sub-folder contains two sub-folders, class1/ and class2/. Class1/ includes non-joker images and class2/ contains joker images.
+_imgdir_ is where your imgs are organized with three sub-folders: _train_/, _valid_/, and _test_/.  
 
-joker-classify-accuracy.py is for getting accuracy with pre-trained model.  
+Each sub-folder contains two sub-folders, _class1_/ and _class2_/. _class1_/ includes non-joker images and _class2_/ contains joker images.
+
+_joker-classify-accuracy.py_ is for getting accuracy with pre-trained model.  
 
 
 # Results
+
+## Model
+```
+2020-10-22 22:34:29.078718: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudnn.so.7
+dataset path: TRAIN_DATA_FOLDER=/home/tobi/Downloads/trixsyDataset
+
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+conv1 (Conv2D)               (None, 54, 54, 64)        7808      
+_________________________________________________________________
+batch_normalization (BatchNo (None, 54, 54, 64)        256       
+_________________________________________________________________
+max_pooling2d (MaxPooling2D) (None, 26, 26, 64)        0         
+_________________________________________________________________
+conv2 (Conv2D)               (None, 26, 26, 64)        102464    
+_________________________________________________________________
+batch_normalization_1 (Batch (None, 26, 26, 64)        256       
+_________________________________________________________________
+max_pooling2d_1 (MaxPooling2 (None, 12, 12, 64)        0         
+_________________________________________________________________
+conv3 (Conv2D)               (None, 12, 12, 128)       73856     
+_________________________________________________________________
+conv4 (Conv2D)               (None, 12, 12, 128)       147584    
+_________________________________________________________________
+max_pooling2d_2 (MaxPooling2 (None, 5, 5, 128)         0         
+_________________________________________________________________
+flatten (Flatten)            (None, 3200)              0         
+_________________________________________________________________
+fc8 (Dense)                  (None, 100)               320100    
+_________________________________________________________________
+dropout (Dropout)            (None, 100)               0         
+_________________________________________________________________
+output (Dense)               (None, 2)                 202       
+=================================================================
+Total params: 652,526
+Trainable params: 652,270
+Non-trainable params: 256
+
+Found 33555 images belonging to 2 classes.
+Found 3018 images belonging to 2 classes.
+Found 0 images belonging to 2 classes.
+ 1/300 [..............................] - ETA: 0s - loss: 2.1360 - accuracy: 0.2969
+263/300 [=========================>....] - 118s 448ms/step - loss: 0.4770 - accuracy: 0.8034 - val_loss: 0.5494 - val_accuracy: 0.8131
+2020-10-22 22:36:28.053056 __main__ - INFO - saving model to {filename} (joker-classify-network.py:297)
+
+```
 
 ## Runtime latencies
 
@@ -111,9 +160,9 @@ run CNN n=16265: 4.21ms +/- 901.34us (median 4.05ms, min 2.61ms max 11.24ms)
 
 ```
 == Timing statistics ==
-== Timing statistics ==
-accumulate DVS n=16268: 12.32ms +/- 103.92ms (median 3.75ms, min 211.24us max 3.24s)
-normalization n=16267: 2.01ms +/- 743.03us (median 1.84ms, min 854.73us max 8.45ms)
-send frame n=16267: 108.55us +/- 27.40us (median 103us, min 65.57us max 475.41us)
-show DVS image n=16267: 4.28ms +/- 649.69us (median 4.15ms, min 3ms max 12.77ms)
+overall producer frame rate n=5369: 2ms +/- 1.24ms (median 1.57ms, min 149.73us max 53.78ms)
+accumulate DVS n=5369: 408.20us +/- 366.78us (median 252.01us, min 94.65us max 3.22ms)
+normalization n=5368: 1.15ms +/- 392.04us (median 1.01ms, min 737.43us max 5.75ms)
+send frame n=5368: 81.26us +/- 56.89us (median 56.98us, min 43.39us max 562.91us)
+show DVS image n=106: 4.54ms +/- 4.78ms (median 3.52ms, min 2.66ms max 50.51ms)
 ```

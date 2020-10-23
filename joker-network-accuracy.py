@@ -1,48 +1,25 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os,sys
-
 import tensorflow as tf
-from tensorflow import keras
-
 import os, shutil, random, glob
 import cv2
 import numpy as np
-import pandas as pd
-
 import math
-
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-# CUDA_VISIBLE_DEVICES = 2
-
-# import keras
-from keras.datasets import cifar10
-from keras.optimizers import SGD
-from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
-import matplotlib.pyplot as plt
-
 from keras.models import Model, load_model
-from keras.utils import np_utils
-# import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
-from glob import glob
-
+from globals_and_utils import *
 
 
 print(tf.version.VERSION)
-
-
-
-# imgdir = "./train/"
-imgdir = sys.argv[1] 
+imgdir = TRAIN_DATA_FOLDER
 print('dataset path', imgdir)
 
-resize = int(sys.argv[3])
+resize = IMSIZE
 
 def get_img(img_paths, img_size):
     X = np.zeros((len(img_paths),img_size,img_size,1),dtype=np.uint8)
@@ -276,18 +253,14 @@ test_generator = test_datagen.flow_from_directory(
         color_mode='grayscale')
 
 
-checkpoint_path = "training_2/cp.ckpt"
+checkpoint_path = "training/cp.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 
 earlyStopping = EarlyStopping(monitor='val_loss', patience=10, verbose=0, mode='min')
 mcp_save = ModelCheckpoint('.mdl_wts.hdf5', save_best_only=True, monitor='val_loss', mode='min')
 
-color_type = 1
-
-
-
-# result = model.fit_generator(train_generator, 
+# result = model.fit_generator(train_generator,
 #           steps_per_epoch=300, 
 #           epochs=100, verbose=1,
 #           validation_data=valid_generator,
@@ -322,10 +295,10 @@ loss, acc = model.evaluate_generator(train_generator, steps=math.ceil(31833/trai
 # print(predictions)
 # print(labels)
 # print(np.sum(labels == predictions) / len(predictions))
-print("pretrained model, train accuracy: {:5.2f}%".format(100*acc))
+print("pretrained model, training accuracy: {:5.2f}%".format(100*acc))
 print("{} end testing".format(datetime.datetime.now()))
 
 valid_generator.reset()
 loss, acc = model.evaluate_generator(valid_generator, verbose=2)
-print("pretrained model, valid accuracy: {:5.2f}%".format(100*acc))
+print("pretrained model, validation accuracy: {:5.2f}%".format(100*acc))
 print("{} end testing".format(datetime.datetime.now()))

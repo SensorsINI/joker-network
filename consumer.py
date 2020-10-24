@@ -2,6 +2,7 @@
 consumer of DVS frames for classification of joker/nonjoker by consumer processs
 Authors: Shasha Guo, Yuhaung Hu, Min Liu, Tobi Delbruck Oct 2020
 """
+import glob
 import pickle
 import cv2
 import sys
@@ -55,12 +56,15 @@ saved_non_jokers= collections.deque(maxlen=NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKE
 Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
 Path(NON_JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
 def next_path_index(path):
-    l=os.listdir(path)
+    l=glob.glob(path+'/[0-9]*.png')
     if len(l)==0:
         return 0
     else:
         l2=sorted(l)
-        next=int(l2[-1][0:-4])+1 # strip .png
+        last=l2[-1]
+        last2=last.split('/')[-1]
+        last3=last2.split('.')[0]
+        next=int(last3)+1 # strip .png
         return next
 
 next_joker_index=next_path_index(JOKERS_FOLDER)

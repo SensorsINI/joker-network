@@ -14,7 +14,7 @@ MODEL_LITE = 'joker.tflite'  # joker network model
 EVENT_COUNT_PER_FRAME = 3000  # events per frame
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for colleting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
-MAX_SHOWN_DVS_FRAME_RATE_HZ=10 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
+MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
 DATA_FOLDER = 'data'  # new samples stored here
 NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 6
@@ -22,6 +22,7 @@ JOKERS_FOLDER = DATA_FOLDER + '/jokers'
 NON_JOKERS_FOLDER = DATA_FOLDER + '/nonjokers'
 SERIAL_PORT = "/dev/ttyUSB0"  # port to talk to arduino finger controller
 TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset'
+JOKER_NET_BASE_NAME='joker_net'
 
 class CustomFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""

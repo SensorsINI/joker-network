@@ -82,17 +82,19 @@ Send char '1' to activate solenoid finger, '0' to relax it
 
 # Training
 
-_joker-classify-network.py_ is for training.  
+_train.py_ trains the network  
 
 ```
-python joker-classify-network.py imgdir weightfilename resize
+python train.py
 ```
 
-_imgdir_ is where your imgs are organized with three sub-folders: _train_/, _valid_/, and _test_/.  
+TRAIN_DATA_FOLDER is where your examples are organized with three sub-folders: _train_/, _valid_/, and _test_/.
 
-Each sub-folder contains two sub-folders, _class1_/ and _class2_/. _class1_/ includes non-joker images and _class2_/ contains joker images.
+The script _make_train_valid_test()_ in _dataset_utils.py_ builds these folders using desired split from source folders _class1_ and _class2_.  
 
-_joker-classify-accuracy.py_ is for getting accuracy with pre-trained model.  
+Each train/valid/test sub-folder contains two sub-folders, _class1_/ and _class2_/. 
+
+_class1_/ has non-joker images and _class2_/ contains joker images.
 
 
 # Results
@@ -150,19 +152,23 @@ Found 0 images belonging to 2 classes.
 ### consumer (with tflite model)
 
 ```
-overall consumer loop n=16266: 19.07ms +/- 104.09ms (median 10.45ms, min 3.81ms max 3.25s)
-recieve UDP n=16266: 12.59ms +/- 104.03ms (median 4.15ms, min 16.93us max 3.24s)
-unpickle and normalize/reshape n=16265: 160.13us +/- 43.65us (median 150.44us, min 87.74us max 672.34us)
-run CNN n=16265: 4.21ms +/- 901.34us (median 4.05ms, min 2.61ms max 11.24ms)
+== Timing statistics ==
+overall consumer loop n=20772: 11.14ms +/- 35.28ms (median 6.50ms, min 2.57ms max 2.11s)
+recieve UDP n=20772: 4.79ms +/- 35.09ms (median 25.03us, min 14.31us max 2.11s)
+unpickle and normalize/reshape n=20771: 141.34us +/- 38.75us (median 131.61us, min 82.02us max 625.37us)
+run CNN n=20771: 4.04ms +/- 894.48us (median 3.91ms, min 2.37ms max 10ms)
 ```
 
 ###producer
 
 ```
 == Timing statistics ==
-overall producer frame rate n=5369: 2ms +/- 1.24ms (median 1.57ms, min 149.73us max 53.78ms)
-accumulate DVS n=5369: 408.20us +/- 366.78us (median 252.01us, min 94.65us max 3.22ms)
-normalization n=5368: 1.15ms +/- 392.04us (median 1.01ms, min 737.43us max 5.75ms)
-send frame n=5368: 81.26us +/- 56.89us (median 56.98us, min 43.39us max 562.91us)
-show DVS image n=106: 4.54ms +/- 4.78ms (median 3.52ms, min 2.66ms max 50.51ms)
+overall producer frame rate n=32463: 10.62ms +/- 66.40ms (median 5.43ms, min 1.21ms max 3.98s)
+2020-10-23 12:02:37,130 - __main__ - INFO - closing <pyaer.davis.DAVIS object at 0x7fe47768e370> (producer.py:28)
+2020-10-23 12:02:37,136 - globals_and_utils - INFO - saving timing data for overall producer frame rate in numpy file data/producer-frame-rate-20201023-1156.npy (globals_and_utils.py:101)
+2020-10-23 12:02:37,136 - globals_and_utils - INFO - there are 32463 times (globals_and_utils.py:102)
+accumulate DVS n=32463: 8.46ms +/- 66.02ms (median 3.73ms, min 154.50us max 3.97s)
+normalization n=32462: 1.33ms +/- 329.35us (median 1.27ms, min 754.12us max 4.11ms)
+send frame n=32462: 104.71us +/- 29.46us (median 100.61us, min 41.01us max 397.44us)
+show DVS image n=2543: 4.58ms +/- 1.66ms (median 4.37ms, min 2.45ms max 64.55ms)
 ```

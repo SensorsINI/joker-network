@@ -2,8 +2,8 @@
 # dataset specified by TRAIN_DATA_FOLDER in globals_and_utils
 # this folder contains train valid test folders each with class1 (nonjoker) and class2 (joker) examples
 # see dataset_utils for methods to create the training split folders
-import glob
 
+import glob
 import tensorflow as tf
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import Sequential
@@ -164,10 +164,7 @@ log.info(f'saving tflite model as {tflite_model_name}')
 with open(tflite_model_name, 'wb') as f:
   f.write(tflite_model)
 
-log.info('evaluating test set accuracy')
-test_generator.reset()
-loss, acc = model.evaluate(test_generator, verbose=2)
-log.info("test set accuracy: {:5.2f}%".format(100*acc))
+
 
 log.info(f'done training; model saved in {model_folder} and {tflite_model_name}')
 

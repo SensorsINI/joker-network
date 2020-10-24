@@ -77,6 +77,7 @@ def producer():
     cv2_resized = False
     last_cv2_frame_time = time.time()
     frame=None
+    frame_number=0
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_file = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
@@ -111,7 +112,8 @@ def producer():
                 log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
 
                 with Timer('send frame'):
-                    data = pickle.dumps(frame)
+                    data = pickle.dumps((frame_number, frame)) # send frame_number to allow determining dropped frames in consumer
+                    frame_number+=1
                     client_socket.sendto(data, udp_address)
 
                 if SHOW_DVS_OUTPUT:

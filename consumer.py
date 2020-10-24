@@ -112,23 +112,28 @@ def write_next_image(dir:str, idx:int, img):
 
 
 if __name__ == '__main__':
+    last_frame_number=0
     while True:
         timestr = time.strftime("%Y%m%d-%H%M")
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
             with Timer('recieve UDP'):
-                # inputready,_,_ = select([server_socket],[],[],.1)
-                # if len(inputready)==0:
-                #     cv2.waitKey(1)
-                #     continue
-                receive_data, client_address = server_socket.recvfrom(udpbufsize)
+
+                while True: # read datagrams unti there are no more, so that we always get very latest one in our receive buffer
+                    inputready, _, _ = select([server_socket], [], [], .1)
+                    if len(inputready)==0:
+                        break
+                    receive_data, client_address = server_socket.recvfrom(udpbufsize)
 
             with Timer('unpickle and normalize/reshape'):
-                img = pickle.loads(receive_data)
+                (frame_number,img) = pickle.loads(receive_data)
+                dropped_frames=frame_number-last_frame_number-1
+                if dropped_frames>0:
+                    log.warning(f'Dropped {dropped_frames} frames from producer')
+                last_frame_number=frame_number
                 # img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
-                img = (1./255)*np.reshape(img, [1,IMSIZE, IMSIZE,1])
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                interpreter.set_tensor(input_details[0]['index'], np.array(img,dtype=np.float32))
+                interpreter.set_tensor(input_details[0]['index'], (1./255)*np.array(np.reshape(img, [1,IMSIZE, IMSIZE,1]),dtype=np.float32))
                 interpreter.invoke()
                 pred = interpreter.get_tensor(output_details[0]['index'])
                 dec = np.argmax(pred[0])

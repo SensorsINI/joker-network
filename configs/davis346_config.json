@@ -9,7 +9,7 @@
     "PadFollBn_fine": 215,
     "DiffBn_coarse": 4,
     "DiffBn_fine": 39,
-    "ONBn_coarse": 4,
+    "ONBn_coarse": 6,
     "ONBn_fine": 255,
     "OFFBn_coarse": 4,
     "OFFBn_fine": 1,

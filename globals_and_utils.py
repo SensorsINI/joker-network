@@ -1,7 +1,10 @@
 """ Shared stuff between producer and consumer """
 import logging
+import math
 import os
 import time
+
+import cv2
 import numpy as np
 import atexit
 from engineering_notation import EngNumber  as eng  # only from pip
@@ -9,20 +12,29 @@ from engineering_notation import EngNumber  as eng  # only from pip
 LOGGING_LEVEL = logging.INFO
 PORT = 12000  # UDP port used to send frames from producer to consumer
 IMSIZE = 224  # input image size, must match model
+UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
+
 # MODEL='afnorm224v1.h5'
 MODEL_LITE = 'joker.tflite'  # joker network model
 EVENT_COUNT_PER_FRAME = 3000  # events per frame
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for colleting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
+MIN_PRODUCER_FRAME_INTERVAL_S=(2e-3)# inference takes about 3ms and normalization takes 1ms, hence at least 2ms
+        # limit rate that we send frames to about what the GPU can manage for inference time
+        # after we collect sufficient events, we don't bother to normalize and send them unless this time has
+        # passed since last frame was sent. That way, we make sure not to flood the consumer
 MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
-DATA_FOLDER = 'data'  # new samples stored here
+DATA_FOLDER = home = '/home/tobi/Downloads/trixsyDataset/data' #'data'  # new samples stored here
 NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 6
 JOKERS_FOLDER = DATA_FOLDER + '/jokers'
 NON_JOKERS_FOLDER = DATA_FOLDER + '/nonjokers'
 SERIAL_PORT = "/dev/ttyUSB0"  # port to talk to arduino finger controller
-TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset'
+TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
+
 JOKER_NET_BASE_NAME='joker_net'
+CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
+
 
 class CustomFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""
@@ -114,6 +126,24 @@ def print_timing_info():
             plt.title(k)
             plt.show()
 
+def write_next_image(dir:str, idx:int, img):
+    """ Saves data sample image
+
+    :param dir: the folder
+    :param idx: the current index number
+    :param img: the image to save
+    :returns: the next index
+    """
+    while True:
+        n=f'{dir}/{idx:04d}.png'
+        if not os.path.isfile(n):
+            break
+        idx+=1
+    try:
+        cv2.imwrite(n, img)
+    except Exception as e:
+        log.error(f'error saving {n}: caught {e}')
+    return idx
 
 # this will print all the timer values upon termination of any program that imported this file
 atexit.register(print_timing_info)

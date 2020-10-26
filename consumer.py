@@ -51,7 +51,9 @@ else:
 
 log.info('opening serial port {} to send commands to finger'.format(serial_port))
 arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
-udpbufsize = IMSIZE * IMSIZE+1000
+
+log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to recieve the {IMSIZE}x{IMSIZE} images')
+
 saved_non_jokers= collections.deque(maxlen=NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER) # lists of images to save
 Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
 Path(NON_JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -91,38 +93,29 @@ def show_frame(frame,name, resized_dict):
         # wait minimally since interp takes time anyhow
         cv2.waitKey(1)
 
-def write_next_image(dir:str, idx:int, img):
-    """ Saves data sample image
 
-    :param dir: the folder
-    :param idx: the current index number
-    :param img: the image to save
-    :returns: the next index
-    """
-    while True:
-        n=f'{dir}/{idx:04d}.png'
-        if not os.path.isfile(n):
-            break
-        idx+=1
-    try:
-        cv2.imwrite(n, img)
-    except Exception as e:
-        log.error(f'error saving {n}: caught {e}')
-    return idx
 
 
 if __name__ == '__main__':
     last_frame_number=0
+    # receive_data=bytearray(UDP_BUFFER_SIZE)
     while True:
         timestr = time.strftime("%Y%m%d-%H%M")
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
             with Timer('recieve UDP'):
-
+                # num_bytes_recieved=0
+                receive_data=None
+                tries=0
                 while True: # read datagrams unti there are no more, so that we always get very latest one in our receive buffer
                     inputready, _, _ = select([server_socket], [], [], .1)
-                    if len(inputready)==0:
+                    num_ready=len(inputready)
+                    if (receive_data is not None)  and (num_ready==0 or tries>2):
+                        # Has danger that as we recieve a datagram, another arrives, getting us stuck here.
+                        # Hence we break from loop only if  we have data AND (there is no more OR we already tried 3 times to empty the socket)
                         break
-                    receive_data, client_address = server_socket.recvfrom(udpbufsize)
+                    if num_ready>0:
+                        receive_data = server_socket.recv(UDP_BUFFER_SIZE)
+                    tries+=1
 
             with Timer('unpickle and normalize/reshape'):
                 (frame_number,img) = pickle.loads(receive_data)

@@ -5,9 +5,8 @@ Authors: Yuhuang Hu, Shasha Guo,  Min Liu, Tobi Delbruck Oct 2020
 
 import atexit
 import pickle
+from pathlib import Path
 
-from pyaer.davis import DAVIS
-from pyaer import libcaer
 import cv2
 import sys
 import math
@@ -17,8 +16,20 @@ import socket
 import numpy as np
 from globals_and_utils import *
 from engineering_notation import EngNumber  as eng # only from pip
+import argparse
+
+from pyaer.davis import DAVIS
+from pyaer import libcaer
 
 log=my_logger(__name__)
+
+parser = argparse.ArgumentParser(
+    description='producer: Generates DVS frames for trixy to process in consumer', allow_abbrev=True,
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument(
+    "--record", type=str, default=None,
+    help="record DVS frames into folder DATA_FOLDER/collected/<name>")
+
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_address = ('', PORT)
@@ -30,6 +41,14 @@ def cleanup():
     cv2.destroyAllWindows()
 
 atexit.register(cleanup)
+
+args = parser.parse_args()
+recording_folder=None
+if args.record is not None:
+    recording_folder=os.path.join(DATA_FOLDER,'recordings', args.record)
+    log.info(f'recording frames to {recording_folder}')
+    Path(recording_folder).mkdir(parents=True, exist_ok=True)
+
 
 print("DVS USB ID:", device.device_id)
 if device.device_is_master:
@@ -78,6 +97,9 @@ def producer():
     last_cv2_frame_time = time.time()
     frame=None
     frame_number=0
+    recording_frame_number = 0
+    time_last_frame_sent=0
+
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_file = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
@@ -95,6 +117,8 @@ def producer():
                                 events = np.vstack([events, pol_events]) # otherwise tack new events to end
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
+                if time.time()-time_last_frame_sent<MIN_PRODUCER_FRAME_INTERVAL_S:
+                    continue # just collect another frame since it will be more timely
 
                 with Timer('normalization'):
                     # if frame is None: # debug timing
@@ -115,7 +139,9 @@ def producer():
                     data = pickle.dumps((frame_number, frame)) # send frame_number to allow determining dropped frames in consumer
                     frame_number+=1
                     client_socket.sendto(data, udp_address)
-
+                    time_last_frame_sent=time.time()
+                if recording_folder is not None:
+                    recording_frame_number=write_next_image(recording_folder,recording_frame_number,frame)
                 if SHOW_DVS_OUTPUT:
                     t=time.time()
                     if t-last_cv2_frame_time>1./MAX_SHOWN_DVS_FRAME_RATE_HZ:

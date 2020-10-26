@@ -1,6 +1,6 @@
 # trains the joker network
 # dataset specified by TRAIN_DATA_FOLDER in globals_and_utils
-# this folder contains train valid test folders each with class1 (nonjoker) and class2 (joker) examples
+# this folder contains train/ valid/ test/ folders each with class1 (nonjoker) and class2 (joker) examples
 # see dataset_utils for methods to create the training split folders
 
 import glob
@@ -17,6 +17,13 @@ from globals_and_utils import *
 INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest saved model
 
 log=my_logger(__name__)
+LOG_FILE='training.log'
+fh=logging.FileHandler(LOG_FILE)
+fh.setLevel(logging.INFO)
+fmtter=logging.Formatter(fmt= "%(asctime)s - %(message)s")
+log.addHandler(fh)
+
+start_time=time.time()
 log.info(f'Tensorflow version {tf.version.VERSION}')
 log.info(f'dataset path: TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}')
 
@@ -71,6 +78,7 @@ def create_model():
 
     return model
 
+model=None
 if INITIALIZE_MODEL_FROM_LATEST:
     existing_model_folders=glob.glob(JOKER_NET_BASE_NAME+ '*/')
     if len(existing_model_folders)>0:
@@ -86,7 +94,7 @@ else:
     model.compile(loss='categorical_crossentropy',
                   optimizer='sgd',
                   metrics=['accuracy'])
-model.summary()
+model.summary(print_fn=log.info)
 
 train_batch_size = 64
 valid_batch_size = 64
@@ -135,6 +143,8 @@ save_checkpoint = ModelCheckpoint(checkpoint_filename, save_best_only=True, moni
 if os.path.isfile(checkpoint_filename):
     log.info(f'loading weights from checkpoint {checkpoint_filename}')
     model.load_weights(checkpoint_filename)
+# weight jokers (class2) more heavily since there are about 1/10 of them
+class_weights={0:1, 1:10}
 
 log.info('starting training')
 history = model.fit(train_generator,
@@ -145,9 +155,16 @@ history = model.fit(train_generator,
           callbacks=[stop_early, save_checkpoint],
           # max_queue_size=capacity,
           shuffle = True,
+          class_weight=class_weights,
           workers=1)
 
 log.info(f'Done with model.fit; history is \n{history.history}')
+
+log.info('evaluating test set accuracy')
+test_generator.reset()
+loss, acc = model.evaluate(test_generator, verbose=1)
+log.info('final test set loss,accuracy: {:5.4f}, {:5.2f}%'.format(loss,100*acc))
+
 
 timestr = time.strftime("%Y%m%d-%H%M")
 model_folder= f'{JOKER_NET_BASE_NAME}_{timestr}'
@@ -164,8 +181,8 @@ log.info(f'saving tflite model as {tflite_model_name}')
 with open(tflite_model_name, 'wb') as f:
   f.write(tflite_model)
 
-
-
-log.info(f'done training; model saved in {model_folder} and {tflite_model_name}')
+elapsed_time_min=(time.time()-start_time)/60
+log.info(f'done training after {elapsed_time_min:4.1f}m; model saved in {model_folder} and {tflite_model_name}.'
+         f'\nSee {LOG_FILE} for logging output for this run.')
 
 

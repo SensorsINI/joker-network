@@ -6,10 +6,10 @@ import random
 # import itertools
 from pathlib import Path
 from globals_and_utils import *
-
+from tqdm import tqdm
 log=my_logger(__name__)
 
-DS='/home/tobi/Downloads/trixsyDataset/'
+
 def rename_imgs(folder):
 
     dir=folder
@@ -31,7 +31,12 @@ def rename_imgs(folder):
     os.remove('tmp')
 
 def make_train_valid_test():
-    os.chdir(DS)
+    SRC_DATA_FOLDER ='/home/tobi/Downloads/trixsyDataset/source_data'
+    if not os.path.isdir(TRAIN_DATA_FOLDER):
+        log.warning(f'{TRAIN_DATA_FOLDER} does not exist, creating it')
+        Path(TRAIN_DATA_FOLDER).mkdir(parents=True, exist_ok=True)
+    log.info(f'Using source images from {SRC_DATA_FOLDER}')
+    os.chdir(SRC_DATA_FOLDER)
     fracs=[.8,.1,.1]
     names=['train','valid','test']
 
@@ -48,8 +53,10 @@ def make_train_valid_test():
         filenum=0
         for (n,r) in zip(names,ranges):
             dfn=n+'/'+sfn
+            if not os.path.isdir(dfn):
+                log.info(f'Creating folder {dfn}')
             Path(dfn).mkdir(parents=True, exist_ok=True)
-            for j in range(r[0],r[1]):
+            for j in tqdm(range(r[0],r[1])):
                 sf=sfn+'/'+ls[j]
                 if 'png' in sf:
                     nm = f'{filenum:05d}.png'
@@ -85,22 +92,32 @@ def test_samples():
     while True:
         windows=[]
         for c in [1,2]:
+            gt_class='nonjoker' if c==1 else 'joker'
             class_folder_name=test_folder+f'class{c}'
             ls=os.listdir(class_folder_name)
             random.shuffle(ls)
             for f in ls[0:NUM_SAMPLES]:
-                img=cv2.imread(class_folder_name+'/'+f, cv2.IMREAD_GRAYSCALE)
+                file_path=class_folder_name + '/' + f
+                img=cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
                 img=cv2.resize(img,(IMSIZE,IMSIZE))
                 input=(1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]))
                 pred = model.predict(input)
                 dec = 'joker' if np.argmax(pred[0])==1 else 'nonjoker'
-                correct='correct' if ((dec=='joker' and c==2) or (dec=='nonjoker' and c==1)) else 'wrong'
+                correct='right' if ((dec=='joker' and c==2) or (dec=='nonjoker' and c==1)) else 'wrong'
+                if correct=='wrong': # save wrong classifications for later
+                    copy_folder=TRAIN_DATA_FOLDER+'/incorrect/'+f'class{c}'
+                    Path(copy_folder).mkdir(parents=True, exist_ok=True)
+                    log.info(f'saving file {f} as incorrect {gt_class} classified as {dec}')
+                    copyfile(file_path, os.path.join(copy_folder,f))
                 joker_prob = pred[0][1]
-                win_name=f'class{c}: {correct}:{dec} (joker_prob={joker_prob:.2f})'
+                win_name=f'{correct}: class{c}: {dec} (joker_prob={joker_prob:.2f})'
                 # cv2.namedWindow(win_name)
                 windows.append(win_name)
                 cv2.imshow(win_name,img)
-        k=cv2.waitKey(0)&0xff
+                cv2.moveWindow(win_name,1,500*(c-1)+1)
+                k = cv2.waitKey(100) & 0xff
+                if correct=='wrong':
+                    time.sleep(3)
         if k==27 or k==ord('q'):
             break
         for w in windows:
@@ -109,4 +126,4 @@ def test_samples():
 
 
 # make_train_valid_test()
-test_samples()
+# test_samples()

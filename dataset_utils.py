@@ -84,7 +84,8 @@ def test_samples():
         log.info(f'initializing model from {latest_model_folder}')
         model = load_model(latest_model_folder)
     else:
-        log.error('no model loaded')
+        log.error('no model found to load')
+        quit(1)
 
     NUM_SAMPLES=1
     test_folder=TRAIN_DATA_FOLDER + '/test/'

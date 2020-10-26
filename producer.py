@@ -10,7 +10,7 @@ from pathlib import Path
 import cv2
 import sys
 import math
-from time import time
+import time
 import numpy.ma as ma
 import socket
 import numpy as np
@@ -98,7 +98,8 @@ def producer():
     frame=None
     frame_number=0
     recording_frame_number = 0
-    time_last_frame_sent=0
+    time_last_frame_sent=time.time()
+    frames_dropped_counter=0
 
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
@@ -117,9 +118,14 @@ def producer():
                                 events = np.vstack([events, pol_events]) # otherwise tack new events to end
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
-                if time.time()-time_last_frame_sent<MIN_PRODUCER_FRAME_INTERVAL_S:
+                dtMs = (time.time() - time_last_frame_sent)*1e3
+                if dtMs<MIN_PRODUCER_FRAME_INTERVAL_MS:
+                    log.debug(f'frame #{frames_dropped_counter} after only {dtMs:.3f}ms, discarding to collect newer frame')
+                    frames_dropped_counter+=1
                     continue # just collect another frame since it will be more timely
 
+                log.debug(f'after dropping {frames_dropped_counter} frames, got one after {dtMs:.1f}ms')
+                frames_dropped_counter=0
                 with Timer('normalization'):
                     # if frame is None: # debug timing
                         # take DVS coordinates and scale x and y to output frame dimensions using flooring math

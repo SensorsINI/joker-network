@@ -104,18 +104,18 @@ if __name__ == '__main__':
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
             with Timer('recieve UDP'):
                 # num_bytes_recieved=0
-                receive_data=None
-                tries=0
-                while True: # read datagrams unti there are no more, so that we always get very latest one in our receive buffer
-                    inputready, _, _ = select([server_socket], [], [], .1)
-                    num_ready=len(inputready)
-                    if (receive_data is not None)  and (num_ready==0 or tries>2):
-                        # Has danger that as we recieve a datagram, another arrives, getting us stuck here.
-                        # Hence we break from loop only if  we have data AND (there is no more OR we already tried 3 times to empty the socket)
-                        break
-                    if num_ready>0:
+                # receive_data=None
+                # tries=0
+                # while True: # read datagrams unti there are no more, so that we always get very latest one in our receive buffer
+                #     inputready, _, _ = select([server_socket], [], [], .1)
+                #     num_ready=len(inputready)
+                #     if (receive_data is not None)  and (num_ready==0 or tries>2):
+                #         # Has danger that as we recieve a datagram, another arrives, getting us stuck here.
+                #         # Hence we break from loop only if  we have data AND (there is no more OR we already tried 3 times to empty the socket)
+                #         break
+                #     if num_ready>0:
                         receive_data = server_socket.recv(UDP_BUFFER_SIZE)
-                    tries+=1
+                    # tries+=1
 
             with Timer('unpickle and normalize/reshape'):
                 (frame_number,img) = pickle.loads(receive_data)

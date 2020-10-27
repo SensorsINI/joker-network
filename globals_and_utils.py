@@ -25,11 +25,14 @@ MIN_PRODUCER_FRAME_INTERVAL_MS=5.0 # inference takes about 3ms and normalization
         # passed since last frame was sent. That way, we make sure not to flood the consumer
 MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
+
 DATA_FOLDER = home = '/home/tobi/Downloads/trixsyDataset/data' #'data'  # new samples stored here
 NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 6
 JOKERS_FOLDER = DATA_FOLDER + '/jokers'
 NON_JOKERS_FOLDER = DATA_FOLDER + '/nonjokers'
 SERIAL_PORT = "/dev/ttyUSB0"  # port to talk to arduino finger controller
+
+SRC_DATA_FOLDER = '/home/tobi/Downloads/trixsyDataset/source_data'
 TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
 JOKER_NET_BASE_NAME='joker_net'

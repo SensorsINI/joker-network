@@ -10,34 +10,51 @@ from tqdm import tqdm
 log=my_logger(__name__)
 
 
-def rename_imgs(folder):
-
-    dir=folder
-    os.chdir(dir)
+def rename_images(folder):
+    """ Cleans up a folder filled with images (png and jpg) so that the images are numbered consecutively. Useful after using mv --backup=t to add new images to a folder
+    :param folder: the folder name to clean up, relative to working directory
+    """
+    os.chdir(folder)
     if not os.path.exists('tmp'):
         os.mkdir('tmp')
     ls=os.listdir()
+    log.info(f'folder {folder} has {len(ls)} files')
     ls=sorted(ls)
     i=0
-    for f in ls:
+    log.info('renaming files to tmp folder')
+    for f in tqdm(ls):
        if 'png' in f:
             fn=f'tmp/{i:05d}.png'
             i=i+1
             os.rename(f,fn)
+       elif 'jpg' in f:
+           fn = f'tmp/{i:05d}.jpg'
+           i = i + 1
+           os.rename(f, fn)
+
     os.chdir('tmp')
     ls=os.listdir()
-    for f in ls:
+    log.info('moving files back to src folder')
+    for f in tqdm(ls):
         os.rename(f,'../'+f)
-    os.remove('tmp')
+    os.chdir('..')
+    os.rmdir('tmp')
 
-def make_train_valid_test():
-    SRC_DATA_FOLDER ='/home/tobi/Downloads/trixsyDataset/source_data'
+def make_training_set():
+    """ Generates the train/ valid/ and test/ folders in TRAIN_DATA_FOLDER  using the images in SRC_DATA_FOLDER and the split defined by SPLIT variable
+    """
     if not os.path.isdir(TRAIN_DATA_FOLDER):
         log.warning(f'{TRAIN_DATA_FOLDER} does not exist, creating it')
         Path(TRAIN_DATA_FOLDER).mkdir(parents=True, exist_ok=True)
+    else:
+        timestr = time.strftime("%Y%m%d-%H%M")
+        backup_folder = f'{TRAIN_DATA_FOLDER}_{timestr}'
+        log.warning(f'Renaming existing training folder {TRAIN_DATA_FOLDER} to {backup_folder}')
+        os.rename(TRAIN_DATA_FOLDER,backup_folder)
+
     log.info(f'Using source images from {SRC_DATA_FOLDER}')
     os.chdir(SRC_DATA_FOLDER)
-    fracs=[.8,.1,.1]
+    SPLIT=[.8,.1,.1]
     names=['train','valid','test']
 
     for i in [1,2]:
@@ -47,7 +64,7 @@ def make_train_valid_test():
         random.shuffle(ls)
         flast=0
         ranges=[]
-        for f in fracs:
+        for f in SPLIT:
             ranges.append([math.floor(flast*nfiles), math.floor((flast+f)*nfiles)])
             flast+=f
         filenum=0
@@ -70,7 +87,9 @@ def make_train_valid_test():
                 filenum+=1
                 copyfile(sf,df)
 
-def test_samples():
+def test_random_samples():
+    """ Runs test on test folder to evaluate accuracy on example images
+    """
     import glob
     import tensorflow as tf
     from tensorflow.python.keras.models import load_model
@@ -125,6 +144,25 @@ def test_samples():
             cv2.destroyWindow(w)
     cv2.destroyAllWindows()
 
+if __name__ == '__main__':
+    import argparse
 
-# make_train_valid_test()
-# test_samples()
+    parser = argparse.ArgumentParser(description='Dataset utilities', allow_abbrev=True, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--rename_images", type=str, default=None, help="rename images in the folder consecutively.")
+    parser.add_argument("--make_training_set", action='store_true', help="make training data from source images.")
+    parser.add_argument("--test_random_samples", action='store_true', help="test random samples from test set.")
+
+    print(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
+    args=parser.parse_args()
+    if args.rename_images:
+        rename_images(args.rename_images)
+    elif args.make_training_set:
+        make_training_set()
+    elif args.test_random_samples:
+        test_random_samples()
+    else:
+        parser.print_help()
+
+
+
+

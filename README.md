@@ -28,8 +28,8 @@ pip install opencv-python tensorflow keras pyserial pyaer engineering_notation m
 ```
 or
 ```
-conda install keras tensorflow opencv numpy pyserial -c conda-forge
-pip install pyaer engineering_notation
+conda install keras tensorflow opencv numpy pyserial  -c conda-forge
+pip install pyaer engineering_notation sklearn
 ```
 
 #### Note about pip vs conda
@@ -146,6 +146,10 @@ Found 0 images belonging to 2 classes.
 2020-10-22 22:36:28.053056 __main__ - INFO - saving model to {filename} (joker-classify-network.py:297)
 
 ```
+
+## Training outcome
+
+See [training.log](training.log).
 
 ## Runtime latencies
 

@@ -109,7 +109,8 @@ if __name__ == '__main__':
                 # while True: # read datagrams unti there are no more, so that we always get very latest one in our receive buffer
                 #     inputready, _, _ = select([server_socket], [], [], .1)
                 #     num_ready=len(inputready)
-                #     if (receive_data is not None)  and (num_ready==0 or tries>2):
+                #     if (r
+                #     eceive_data is not None)  and (num_ready==0 or tries>2):
                 #         # Has danger that as we recieve a datagram, another arrives, getting us stuck here.
                 #         # Hence we break from loop only if  we have data AND (there is no more OR we already tried 3 times to empty the socket)
                 #         break

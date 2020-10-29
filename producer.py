@@ -23,76 +23,68 @@ from pyaer import libcaer
 
 log=my_logger(__name__)
 
-parser = argparse.ArgumentParser(
-    description='producer: Generates DVS frames for trixy to process in consumer', allow_abbrev=True,
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument(
-    "--record", type=str, default=None,
-    help="record DVS frames into folder DATA_FOLDER/collected/<name>")
 
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-udp_address = ('', PORT)
+def producer(record=None):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_address = ('', PORT)
 
-device = DAVIS(noise_filter=True)
-def cleanup():
-    log.info('closing {}'.format(device))
-    device.shutdown()
-    cv2.destroyAllWindows()
+    device = DAVIS(noise_filter=True)
 
-atexit.register(cleanup)
+    def cleanup():
+        log.info('closing {}'.format(device))
+        device.shutdown()
+        cv2.destroyAllWindows()
 
-args = parser.parse_args()
-recording_folder=None
-if args.record is not None:
-    recording_folder=os.path.join(DATA_FOLDER,'recordings', args.record)
-    log.info(f'recording frames to {recording_folder}')
-    Path(recording_folder).mkdir(parents=True, exist_ok=True)
+    atexit.register(cleanup)
 
+    recording_folder = None
+    if record is not None:
+        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
+        log.info(f'recording frames to {recording_folder}')
+        Path(recording_folder).mkdir(parents=True, exist_ok=True)
 
-print("DVS USB ID:", device.device_id)
-if device.device_is_master:
-    print("DVS is master.")
-else:
-    print("DVS is slave.")
-print("DVS Serial Number:", device.device_serial_number)
-print("DVS String:", device.device_string)
-print("DVS USB bus Number:", device.device_usb_bus_number)
-print("DVS USB device address:", device.device_usb_device_address)
-print("DVS size X:", device.dvs_size_X)
-print("DVS size Y:", device.dvs_size_Y)
-print("Logic Version:", device.logic_version)
-print("Background Activity Filter:",
-      device.dvs_has_background_activity_filter)
-print("Color Filter", device.aps_color_filter, type(device.aps_color_filter))
-print(device.aps_color_filter == 1)
+    print("DVS USB ID:", device.device_id)
+    if device.device_is_master:
+        print("DVS is master.")
+    else:
+        print("DVS is slave.")
+    print("DVS Serial Number:", device.device_serial_number)
+    print("DVS String:", device.device_string)
+    print("DVS USB bus Number:", device.device_usb_bus_number)
+    print("DVS USB device address:", device.device_usb_device_address)
+    print("DVS size X:", device.dvs_size_X)
+    print("DVS size Y:", device.dvs_size_Y)
+    print("Logic Version:", device.logic_version)
+    print("Background Activity Filter:",
+          device.dvs_has_background_activity_filter)
+    print("Color Filter", device.aps_color_filter, type(device.aps_color_filter))
+    print(device.aps_color_filter == 1)
 
-# device.start_data_stream()
-assert(device.send_default_config())
-# attempt to set up USB host buffers for acquisition thread to minimize latency
-assert (device.set_config(
-    libcaer.CAER_HOST_CONFIG_USB,
-    libcaer.CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
-    8))
-assert (device.set_config(
-    libcaer.CAER_HOST_CONFIG_USB,
-    libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
-    4096))
-assert(device.data_start())
-assert(device.set_config(
-    libcaer.CAER_HOST_CONFIG_PACKETS,
-    libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
-    1000))
-assert(device.set_data_exchange_blocking())
+    # device.start_data_stream()
+    assert (device.send_default_config())
+    # attempt to set up USB host buffers for acquisition thread to minimize latency
+    assert (device.set_config(
+        libcaer.CAER_HOST_CONFIG_USB,
+        libcaer.CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
+        8))
+    assert (device.set_config(
+        libcaer.CAER_HOST_CONFIG_USB,
+        libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
+        4096))
+    assert (device.data_start())
+    assert (device.set_config(
+        libcaer.CAER_HOST_CONFIG_PACKETS,
+        libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
+        1000))
+    assert (device.set_data_exchange_blocking())
 
-# setting bias after data stream started
-device.set_bias_from_json("./configs/davis346_config.json")
-xfac=float(IMSIZE)/device.dvs_size_X
-yfac=float(IMSIZE)/device.dvs_size_Y
-histrange = [(0, v) for v in (IMSIZE, IMSIZE)] # allocate DVS frame histogram to desired output size
-npix=IMSIZE*IMSIZE
-
-def producer():
+    # setting bias after data stream started
+    device.set_bias_from_json("./configs/davis346_config.json")
+    xfac = float(IMSIZE) / device.dvs_size_X
+    yfac = float(IMSIZE) / device.dvs_size_Y
+    histrange = [(0, v) for v in (IMSIZE, IMSIZE)]  # allocate DVS frame histogram to desired output size
+    npix = IMSIZE * IMSIZE
     cv2_resized = False
     last_cv2_frame_time = time.time()
     frame=None
@@ -119,7 +111,7 @@ def producer():
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
                 dtMs = (time.time() - time_last_frame_sent)*1e3
-                if dtMs<MIN_PRODUCER_FRAME_INTERVAL_MS:
+                if recording_folder is None and dtMs<MIN_PRODUCER_FRAME_INTERVAL_MS:
                     log.debug(f'frame #{frames_dropped_counter} after only {dtMs:.3f}ms, discarding to collect newer frame')
                     frames_dropped_counter+=1
                     continue # just collect another frame since it will be more timely
@@ -164,17 +156,22 @@ def producer():
                                 break
     except KeyboardInterrupt:
         device.shutdown()
+        if recording_folder is not None:
+            log.info(f'recordings of {recording_frame_number-1} frames saved in {recording_folder}')
 
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='producer: Generates DVS frames for trixy to process in consumer', allow_abbrev=True,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--record", type=str, default=None,
+        help="record DVS frames into folder DATA_FOLDER/collected/<name>")
+    args = parser.parse_args()
+
     try:
-        producer()
+        producer(record=args.record)
     except Exception as e:
         log.error(f'Error: {e}')
-        cleanup()
         sys.exit()
-    else:
-        pass
-    finally:
-        pass

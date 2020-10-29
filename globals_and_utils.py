@@ -38,6 +38,20 @@ TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset/training_dataset' # the ac
 JOKER_NET_BASE_NAME='joker_net'
 CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
 
+def yes_or_no(question, default='y'):
+    if default is not None and (default!='y' and default!='n'):
+        log.error(f'bad option for default: {default}')
+        quit(1)
+    y='Y' if default=='y' else 'y'
+    n='N' if default=='n' else 'n'
+    while "the answer is invalid":
+        reply = str(input(f'{question} ({y}/{n}): ')).lower().strip()
+        if len(reply)==0:
+            return True if default=='y' else False
+        elif reply[0] == 'y':
+            return True
+        if reply[0] == 'n':
+            return False
 
 class CustomFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""

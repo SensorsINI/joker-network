@@ -67,24 +67,17 @@ def make_training_set():
         for f in SPLIT:
             ranges.append([math.floor(flast*nfiles), math.floor((flast+f)*nfiles)])
             flast+=f
-        filenum=0
         for (n,r) in zip(names,ranges):
-            dfn=n+'/'+sfn
-            if not os.path.isdir(dfn):
-                log.info(f'Creating folder {dfn}')
+            dfn=os.path.join(TRAIN_DATA_FOLDER,n,sfn)
+            log.info(f'making {dfn}/ folder for shuffled files from {sfn} in range [{r[0]},{r[1]}')
             Path(dfn).mkdir(parents=True, exist_ok=True)
-            for j in tqdm(range(r[0],r[1])):
-                sf=sfn+'/'+ls[j]
-                if 'png' in sf:
-                    nm = f'{filenum:05d}.png'
-                elif 'jpg' in sf:
-                    nm = f'{filenum:05d}.jpg'
-                else:
-                    print(f'not image file {sf}')
-                    continue
-
-                df=dfn+'/'+nm
-                filenum+=1
+            for j in tqdm(range(r[0],r[1]),desc=f'{sfn}/{n}'):
+                sf=os.path.join(sfn,ls[j])
+                df=os.path.join(dfn,ls[j])
+                # if j-r[0]<3 or j==r[1]-1:
+                #     print(f'copying {sf} -> {df}')
+                # elif j-r[0]==3:
+                #     print('...')
                 copyfile(sf,df)
 
 def test_random_samples():
@@ -117,7 +110,7 @@ def test_random_samples():
             ls=os.listdir(class_folder_name)
             random.shuffle(ls)
             for f in ls[0:NUM_SAMPLES]:
-                file_path=class_folder_name + '/' + f
+                file_path=os.path.join(class_folder_name,f)
                 img=cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
                 img=cv2.resize(img,(IMSIZE,IMSIZE))
                 input=(1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]))

@@ -26,6 +26,10 @@ log=my_logger(__name__)
 
 
 def producer(record=None):
+    """ produce frames for consumer
+
+    :param record: record frames to a folder name record
+    """
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_address = ('', PORT)
 
@@ -97,6 +101,7 @@ def producer(record=None):
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_file = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
         while True:
+
             with Timer('overall producer frame rate', numpy_file=numpy_file , show_hist=True):
                 with Timer('accumulate DVS'):
                     events = None

@@ -123,19 +123,22 @@ def test_random_samples():
                     log.info(f'saving file {f} as incorrect {gt_class} classified as {dec}')
                     copyfile(file_path, os.path.join(copy_folder,f))
                 joker_prob = pred[0][1]
-                win_name=f'{correct}: class{c}: {dec} (joker_prob={joker_prob:.2f})'
-                # cv2.namedWindow(win_name)
+                win_name=f'{correct}: Real class:class{c}/{gt_class} detected as {dec} (joker_prob={joker_prob:.2f})'
+                cv2.namedWindow(win_name,cv2.WINDOW_NORMAL)
                 windows.append(win_name)
                 cv2.imshow(win_name,img)
                 cv2.moveWindow(win_name,1,500*(c-1)+1)
-                k = cv2.waitKey(100) & 0xff
+                cv2.resizeWindow(win_name,800,400)
+
                 if correct=='wrong':
-                    time.sleep(3)
-        if k==27 or k==ord('q'):
-            break
-        for w in windows:
-            cv2.destroyWindow(w)
-    cv2.destroyAllWindows()
+                    k = cv2.waitKey(0) & 0xff
+                else:
+                    k = cv2.waitKey(500) & 0xff
+                if k==27 or k==ord('q')or k==ord('x'):
+                    cv2.destroyAllWindows()
+                    quit()
+                cv2.destroyWindow(win_name)
+
 
 if __name__ == '__main__':
     import argparse

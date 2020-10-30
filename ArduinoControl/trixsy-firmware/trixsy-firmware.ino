@@ -30,7 +30,8 @@ const int PULSE_TIME_MS = 40; // pulse time in ms to drive finger out
 const int  HOLD_DUTY_CYCLE = 50; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
 const int HEARTBEAT_PERIOD_MS=500; // half cycle of built-in LED heartbeat to show we are running
 
-const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0'; // python sends character '1' to activate finger, '0' to relax it
+const char CMD_ACTIVATE_FINGER = '1', CMD_RELAX_FINGER = '0', CMD_FLASH_LED='f; // python sends character '1' to activate finger, '0' to relax it
+// flash command is to measure end to end latency by triggering a DVS frame with LED flashing, then activate finger after inference (ignoring inference)
 const char CMD_INC_PT='+', CMD_DEC_PT='-', CMD_INC_DC=']', CMD_DEC_DC='[';  // to tune values
 const byte STATE_IDLE = 0, STATE_FINGER_PUSHING_OUT = 1, STATE_FINGER_HOLDING = 2;
 

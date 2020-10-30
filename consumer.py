@@ -2,6 +2,7 @@
 consumer of DVS frames for classification of joker/nonjoker by consumer processs
 Authors: Shasha Guo, Yuhaung Hu, Min Liu, Tobi Delbruck Oct 2020
 """
+import argparse
 import glob
 import pickle
 import cv2
@@ -97,6 +98,16 @@ def show_frame(frame,name, resized_dict):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='consumer: Consumes DVS frames for trixy to process', allow_abbrev=True,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--latency_test", type='store_true',
+        help="test end to end latency activating finger on every received frame after inference but only once per 2s")
+
+    args = parser.parse_args()
+    latency_test=args.latency_test
+    last_latency_test_time=time.time()
     last_frame_number=0
     # receive_data=bytearray(UDP_BUFFER_SIZE)
     while True:
@@ -132,6 +143,14 @@ if __name__ == '__main__':
                 pred = interpreter.get_tensor(output_details[0]['index'])
                 dec = np.argmax(pred[0])
                 joker_prob=pred[0][1]
+            if latency_test:
+
+                if time.time()-last_latency_test_time>2:
+                    dec=1
+                    last_latency_test_time=time.time()
+                else:
+                    dec=0
+                    arduino_serial_port.write(b'f')
 
             if dec==1: # joker
                 arduino_serial_port.write(b'1')

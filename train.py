@@ -171,11 +171,44 @@ except KeyboardInterrupt:
     log.warning('keyboard interrupt, saving model and testing')
 
 timestr = time.strftime("%Y%m%d-%H%M")
-if history is not None:
-    training_history_filename='training_history'+timestr+'.npy'
-    np.save(training_history_filename,history)
-    log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
+try:
+    if history is not None:
+        training_history_filename='training_history'+timestr+'.npy'
+        np.save(training_history_filename,history)
+        log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
+        log.info(f'history.history.keys()={history.history.keys()}')
 
+        # summarize history for accuracy
+        plt.plot(history.history['accuracy'])
+        plt.plot(history.history['val_accuracy'])
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'test'], loc='upper left')
+        plt.show()
+        # summarize history for loss
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'test'], loc='upper left')
+        plt.show()
+except Exception as e:
+    log.error(f'some error saving history or plotting: {e}')
+model_folder= f'{JOKER_NET_BASE_NAME}_{timestr}'
+
+log.info(f'saving model to folder {model_folder}')
+model.save(model_folder)
+
+log.info('converting model to tensorflow lite model')
+converter = tf.lite.TFLiteConverter.from_saved_model(model_folder) # path to the SavedModel directory
+tflite_model = converter.convert()
+tflite_model_name=f'{model_folder}.tflite'
+
+log.info(f'saving tflite model as {tflite_model_name}')
+with open(tflite_model_name, 'wb') as f:
+  f.write(tflite_model)
 
 log.info('evaluating test set accuracy')
 test_generator.reset()
@@ -192,20 +225,6 @@ np.set_printoptions(precision=2)
 #                                  cmap=plt.cm.Blues,
 #                                  normalize=True)
 # disp.ax_.set_title('joker/nonjoker confusion matrix')
-
-model_folder= f'{JOKER_NET_BASE_NAME}_{timestr}'
-
-log.info(f'saving model to folder {model_folder}')
-model.save(model_folder)
-
-log.info('converting model to tensorflow lite model')
-converter = tf.lite.TFLiteConverter.from_saved_model(model_folder) # path to the SavedModel directory
-tflite_model = converter.convert()
-tflite_model_name=f'{model_folder}.tflite'
-
-log.info(f'saving tflite model as {tflite_model_name}')
-with open(tflite_model_name, 'wb') as f:
-  f.write(tflite_model)
 
 elapsed_time_min=(time.time()-start_time)/60
 log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {model_folder} and {tflite_model_name}.'

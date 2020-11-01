@@ -1,4 +1,6 @@
-# renumber all files in a folder
+# useful utilities for dataset prep and other stuff for Trixsy
+# author: Tobi Delbruck
+
 import math
 import os
 from shutil import copyfile
@@ -7,6 +9,8 @@ import random
 from pathlib import Path
 from globals_and_utils import *
 from tqdm import tqdm
+import tensorflow as tf
+
 log=my_logger(__name__)
 
 
@@ -90,6 +94,7 @@ def test_random_samples():
     log.info('evaluating test set accuracy')
     log.info(f'Tensorflow version {tf.version.VERSION}')
     existing_model_folders = glob.glob(JOKER_NET_BASE_NAME + '*/')
+    log.info(f'found existing models:\nqq {existing_model_folders}\n choosing newest one')
     model=None
     if len(existing_model_folders) > 0:
         latest_model_folder = max(existing_model_folders, key=os.path.getmtime)
@@ -100,7 +105,7 @@ def test_random_samples():
         quit(1)
 
     NUM_SAMPLES=1
-    test_folder=TRAIN_DATA_FOLDER + '/test/'
+    test_folder=TRAIN_DATA_FOLDER + '/valid/'
     import random
     while True:
         windows=[]
@@ -139,6 +144,27 @@ def test_random_samples():
                     quit()
                 cv2.destroyWindow(win_name)
 
+def get_flops():
+    session = tf.compat.v1.Session()
+    graph = tf.compat.v1.get_default_graph()
+
+
+    with graph.as_default():
+        with session.as_default():
+            model = tf.keras.models.load_model(MODEL)
+
+            run_meta = tf.compat.v1.RunMetadata()
+            opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+
+            # Optional: save printed results to file
+            flops_log_path = os.path.join('.','tf_flops_log.txt')
+            opts['output'] = 'file:outfile={}'.format(flops_log_path)
+
+            # We use the Keras session graph in the call to the profiler.
+            flops = tf.compat.v1.profiler.profile(graph=graph,
+                                                  run_meta=run_meta, cmd='op', options=opts)
+
+            return flops.total_float_ops
 
 if __name__ == '__main__':
     import argparse
@@ -147,6 +173,7 @@ if __name__ == '__main__':
     parser.add_argument("--rename_images", type=str, default=None, help="rename images in the folder consecutively.")
     parser.add_argument("--make_training_set", action='store_true', help="make training data from source images.")
     parser.add_argument("--test_random_samples", action='store_true', help="test random samples from test set.")
+    parser.add_argument("--measure_flops", action='store_true', help="measures flops/frame of network.")
 
     print(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
     args=parser.parse_args()
@@ -156,6 +183,8 @@ if __name__ == '__main__':
         make_training_set()
     elif args.test_random_samples:
         test_random_samples()
+    elif args.measure_flops:
+        log.info(f'total flops/frame={get_flops():.3e}')
     else:
         parser.print_help()
 

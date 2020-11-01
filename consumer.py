@@ -1,6 +1,6 @@
 """
 consumer of DVS frames for classification of joker/nonjoker by consumer processs
-Authors: Shasha Guo, Yuhaung Hu, Min Liu, Tobi Delbruck Oct 2020
+Authors: Tobi Delbruck, Shasha Guo, Yuhaung Hu, Min Liu, Oct 2020
 """
 import argparse
 import glob
@@ -102,7 +102,7 @@ if __name__ == '__main__':
         description='consumer: Consumes DVS frames for trixy to process', allow_abbrev=True,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        "--latency_test", type='store_true',
+        "--latency_test", action='store_true',
         help="test end to end latency activating finger on every received frame after inference but only once per 2s")
 
     args = parser.parse_args()

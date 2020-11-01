@@ -1,8 +1,11 @@
-""" Shared stuff between producer and consumer """
+""" Shared stuff between producer and consumer
+ Author: Tobi Delbruck
+ """
 import logging
 import math
 import os
 import time
+from subprocess import TimeoutExpired
 
 import cv2
 import numpy as np
@@ -14,7 +17,7 @@ PORT = 12000  # UDP port used to send frames from producer to consumer
 IMSIZE = 224  # input image size, must match model
 UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
 
-# MODEL='afnorm224v1.h5'
+MODEL='joker_net_20201030-1740'
 MODEL_LITE = 'joker.tflite'  # joker network model
 EVENT_COUNT_PER_FRAME = 3000  # events per frame
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for colleting histograms of DVS events
@@ -38,14 +41,49 @@ TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset/training_dataset' # the ac
 JOKER_NET_BASE_NAME='joker_net'
 CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
 
-def yes_or_no(question, default='y'):
+import signal
+def alarm_handler(signum, frame):
+    raise TimeoutExpired
+def input_with_timeout(prompt, timeout=30):
+    """ get input with timeout
+
+    :param prompt: the prompt to print
+    :param timeout: timeout in seconds, or None to disable
+
+    :returns: the input
+    :raises: TimeoutExpired if times out
+    """
+    # set signal handler
+    if timeout is not None:
+        signal.signal(signal.SIGALRM, alarm_handler)
+        signal.alarm(timeout) # produce SIGALRM in `timeout` seconds
+    try:
+        return input(prompt)
+    finally:
+        if timeout is not None:
+            signal.alarm(0) # cancel alarm
+            raise TimeoutError
+
+def yes_or_no(question, default='y', timeout=None):
+    """ Get y/n answer with default choice and optional timeout
+
+    :param question: prompt
+    :param default: the default choice, i.e. 'y' or 'n'
+    :param timeout: the timeout in seconds, default is None
+
+    :returns: True or False
+    """
     if default is not None and (default!='y' and default!='n'):
         log.error(f'bad option for default: {default}')
         quit(1)
     y='Y' if default=='y' else 'y'
     n='N' if default=='n' else 'n'
     while "the answer is invalid":
-        reply = str(input(f'{question} ({y}/{n}): ')).lower().strip()
+        try:
+            reply = str(input_with_timeout(f'{question} ({y}/{n}): ',timeout=timeout)).lower().strip()
+        except TimeoutError:
+            log.warning(f'timeout expired, returning default={default} answer')
+            reply=''
         if len(reply)==0:
             return True if default=='y' else False
         elif reply[0] == 'y':

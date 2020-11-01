@@ -1,6 +1,6 @@
 """
 producer of DVS frames for classification of joker/nonjoker by consumer processs
-Authors: Yuhuang Hu, Shasha Guo,  Min Liu, Tobi Delbruck Oct 2020
+Authors: Tobi Delbruck, Yuhuang Hu, Shasha Guo,  Min Liu Oct 2020
 """
 
 import atexit

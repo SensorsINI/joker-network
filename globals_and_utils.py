@@ -59,10 +59,11 @@ def input_with_timeout(prompt, timeout=30):
         signal.alarm(timeout) # produce SIGALRM in `timeout` seconds
     try:
         return input(prompt)
+    except TimeoutExpired as to:
+        raise to
     finally:
         if timeout is not None:
             signal.alarm(0) # cancel alarm
-            raise TimeoutError
 
 def yes_or_no(question, default='y', timeout=None):
     """ Get y/n answer with default choice and optional timeout
@@ -81,7 +82,7 @@ def yes_or_no(question, default='y', timeout=None):
     while "the answer is invalid":
         try:
             reply = str(input_with_timeout(f'{question} ({y}/{n}): ',timeout=timeout)).lower().strip()
-        except TimeoutError:
+        except TimeoutExpired:
             log.warning(f'timeout expired, returning default={default} answer')
             reply=''
         if len(reply)==0:

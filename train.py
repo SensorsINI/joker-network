@@ -21,7 +21,7 @@ import datetime
 
 INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest saved model
 
-log=my_logger(__name__)
+log= logging.getLogger(__name__)
 LOG_FILE='training.log'
 fh=logging.FileHandler(LOG_FILE,'w') # 'w' to overwrite, not append
 fh.setLevel(logging.INFO)
@@ -253,7 +253,7 @@ log.info('evaluating accuracy')
 gen=test_generator
 gen.reset()
 loss, acc = model.evaluate(gen, verbose=1)
-log.info(f'On test {gen}  loss={loss:.3f}, acc={acc:.4f}')
+log.info(f'On test set {gen.directory}  loss={loss:.3f}, acc={acc:.4f}')
 gen.reset()
 y_output = model.predict(gen, verbose=1) # matrix of Nx2 with each row being the nonjoker/joker score
 y_pred=np.argmax(y_output,axis=1) # vector of predicted classes 0/1 for nonjoker/joker

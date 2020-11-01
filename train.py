@@ -22,10 +22,11 @@ import datetime
 INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest saved model
 
 log= logging.getLogger(__name__)
+log.setLevel(LOGGING_LEVEL)
 LOG_FILE='training.log'
 fh=logging.FileHandler(LOG_FILE,'w') # 'w' to overwrite, not append
 fh.setLevel(logging.INFO)
-fmtter=logging.Formatter(fmt= "%(asctime)s - %(levelname)s - %(message)s")
+fmtter=logging.Formatter(fmt= "%(asctime)s-%(levelname)s-%(message)s")
 fh.setFormatter(fmtter)
 log.addHandler(fh)
 
@@ -171,7 +172,8 @@ test_generator = train_datagen.flow_from_directory(
         target_size=(IMSIZE, IMSIZE),
         batch_size=test_batch_size,
         class_mode='categorical',
-        color_mode='grayscale')
+        color_mode='grayscale',
+        shuffle=False) # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
 
 def print_datagen_summary(gen: ImageDataGenerator):
     nsamp=gen.samples

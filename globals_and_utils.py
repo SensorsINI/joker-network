@@ -43,7 +43,7 @@ CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
 
 import signal
 def alarm_handler(signum, frame):
-    raise TimeoutExpired
+    raise TimeoutError
 def input_with_timeout(prompt, timeout=30):
     """ get input with timeout
 
@@ -51,7 +51,7 @@ def input_with_timeout(prompt, timeout=30):
     :param timeout: timeout in seconds, or None to disable
 
     :returns: the input
-    :raises: TimeoutExpired if times out
+    :raises: TimeoutError if times out
     """
     # set signal handler
     if timeout is not None:
@@ -59,7 +59,7 @@ def input_with_timeout(prompt, timeout=30):
         signal.alarm(timeout) # produce SIGALRM in `timeout` seconds
     try:
         return input(prompt)
-    except TimeoutExpired as to:
+    except TimeoutError as to:
         raise to
     finally:
         if timeout is not None:
@@ -82,7 +82,7 @@ def yes_or_no(question, default='y', timeout=None):
     while "the answer is invalid":
         try:
             reply = str(input_with_timeout(f'{question} ({y}/{n}): ',timeout=timeout)).lower().strip()
-        except TimeoutExpired:
+        except TimeoutError:
             log.warning(f'timeout expired, returning default={default} answer')
             reply=''
         if len(reply)==0:

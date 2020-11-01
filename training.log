@@ -1,0 +1,55 @@
+2020-11-01 16:52:27,475-INFO-Tensorflow version 2.3.1
+2020-11-01 16:52:27,475-INFO-dataset path: TRAIN_DATA_FOLDER=/home/tobi/Downloads/trixsyDataset/training_dataset
+2020-11-01 16:52:38,599-INFO-initializing model from joker_net_20201101-1303/
+2020-11-01 16:52:39,176-INFO-Model: "sequential"
+2020-11-01 16:52:39,176-INFO-_________________________________________________________________
+2020-11-01 16:52:39,176-INFO-Layer (type)                 Output Shape              Param #   
+2020-11-01 16:52:39,176-INFO-=================================================================
+2020-11-01 16:52:39,177-INFO-conv1 (Conv2D)               (None, 54, 54, 64)        7808      
+2020-11-01 16:52:39,177-INFO-_________________________________________________________________
+2020-11-01 16:52:39,177-INFO-batch_normalization (BatchNo (None, 54, 54, 64)        256       
+2020-11-01 16:52:39,177-INFO-_________________________________________________________________
+2020-11-01 16:52:39,177-INFO-max_pooling2d (MaxPooling2D) (None, 26, 26, 64)        0         
+2020-11-01 16:52:39,177-INFO-_________________________________________________________________
+2020-11-01 16:52:39,177-INFO-conv2 (Conv2D)               (None, 26, 26, 64)        102464    
+2020-11-01 16:52:39,177-INFO-_________________________________________________________________
+2020-11-01 16:52:39,178-INFO-batch_normalization_1 (Batch (None, 26, 26, 64)        256       
+2020-11-01 16:52:39,178-INFO-_________________________________________________________________
+2020-11-01 16:52:39,178-INFO-max_pooling2d_1 (MaxPooling2 (None, 12, 12, 64)        0         
+2020-11-01 16:52:39,178-INFO-_________________________________________________________________
+2020-11-01 16:52:39,178-INFO-conv3 (Conv2D)               (None, 12, 12, 128)       73856     
+2020-11-01 16:52:39,178-INFO-_________________________________________________________________
+2020-11-01 16:52:39,178-INFO-conv4 (Conv2D)               (None, 12, 12, 128)       147584    
+2020-11-01 16:52:39,178-INFO-_________________________________________________________________
+2020-11-01 16:52:39,178-INFO-max_pooling2d_2 (MaxPooling2 (None, 5, 5, 128)         0         
+2020-11-01 16:52:39,179-INFO-_________________________________________________________________
+2020-11-01 16:52:39,179-INFO-flatten (Flatten)            (None, 3200)              0         
+2020-11-01 16:52:39,179-INFO-_________________________________________________________________
+2020-11-01 16:52:39,179-INFO-fc8 (Dense)                  (None, 100)               320100    
+2020-11-01 16:52:39,179-INFO-_________________________________________________________________
+2020-11-01 16:52:39,179-INFO-dropout (Dropout)            (None, 100)               0         
+2020-11-01 16:52:39,179-INFO-_________________________________________________________________
+2020-11-01 16:52:39,180-INFO-output (Dense)               (None, 2)                 202       
+2020-11-01 16:52:39,180-INFO-=================================================================
+2020-11-01 16:52:39,181-INFO-Total params: 652,526
+2020-11-01 16:52:39,181-INFO-Trainable params: 652,270
+2020-11-01 16:52:39,181-INFO-Non-trainable params: 256
+2020-11-01 16:52:39,181-INFO-_________________________________________________________________
+2020-11-01 16:52:39,181-INFO-making training generator
+2020-11-01 16:52:39,181-INFO-making training generator
+2020-11-01 16:52:41,870-INFO-making validation generator
+2020-11-01 16:52:42,223-INFO-making test generator
+2020-11-01 16:52:42,570-INFO-summary of /home/tobi/Downloads/trixsyDataset/training_dataset/train/: 180689 samples:	65.6% nonjoker,	34.4% joker
+
+2020-11-01 16:52:42,570-INFO-summary of /home/tobi/Downloads/trixsyDataset/training_dataset/valid/: 22586 samples:	65.6% nonjoker,	34.4% joker
+
+2020-11-01 16:52:42,570-INFO-summary of /home/tobi/Downloads/trixsyDataset/training_dataset/test/: 22587 samples:	65.6% nonjoker,	34.4% joker
+
+2020-11-01 16:52:42,705-INFO-evaluating accuracy
+2020-11-01 16:54:02,956-INFO-On test set /home/tobi/Downloads/trixsyDataset/training_dataset/test/  loss=0.020, acc=0.9931
+2020-11-01 16:55:22,759-INFO-**** final test set balanced accuracy: 99.276\% (chance would be 50\%)
+Confusion matrix nonjoker/joker:
+ [[14750    62]
+ [   80  7695]]
+2020-11-01 16:55:22,759-INFO-**** done training after  2.9m; model saved in None and None.
+See training.log for logging output for this run.

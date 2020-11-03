@@ -35,9 +35,11 @@ JOKERS_FOLDER = DATA_FOLDER + '/jokers'
 NON_JOKERS_FOLDER = DATA_FOLDER + '/nonjokers'
 SERIAL_PORT = "/dev/ttyUSB0"  # port to talk to arduino finger controller
 
+LOG_DIR='logs'
 SRC_DATA_FOLDER = '/home/tobi/Downloads/trixsyDataset/source_data'
 TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
+MODEL_DIR='models'
 JOKER_NET_BASE_NAME='joker_net'
 CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
 
@@ -81,7 +83,8 @@ def yes_or_no(question, default='y', timeout=None):
     n='N' if default=='n' else 'n'
     while "the answer is invalid":
         try:
-            reply = str(input_with_timeout(f'{question} ({y}/{n}): ',timeout=timeout)).lower().strip()
+            to_str='' if timeout is None else f'(Timeout {default} in {timeout}s)'
+            reply = str(input_with_timeout(f'{question} {to_str} ({y}/{n}): ',timeout=timeout)).lower().strip()
         except TimeoutError:
             log.warning(f'timeout expired, returning default={default} answer')
             reply=''

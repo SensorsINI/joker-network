@@ -26,77 +26,6 @@ try:
 except Exception as e:
     print(e)
 
-log.info('opening UDP port {} to receive frames from producer'.format(PORT))
-server_socket:socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-address = ("", PORT)
-server_socket.bind(address)
-
-log.info('loading CNN model {}'.format(MODEL_LITE))
-
-# model = load_model(MODEL)
-# tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
-interpreter = tf.lite.Interpreter(model_path=MODEL_LITE)
-interpreter.allocate_tensors()
-# Get input and output tensors.
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-
-if len(sys.argv)>2:
-    log.error('too many arguments\nUsage producer.py [serial_port]')
-elif len(sys.argv)==2:
-    serial_port = sys.argv[1]
-else:
-    serial_port=SERIAL_PORT
-
-
-log.info('opening serial port {} to send commands to finger'.format(serial_port))
-arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
-
-log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to recieve the {IMSIZE}x{IMSIZE} images')
-
-saved_non_jokers= collections.deque(maxlen=NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER) # lists of images to save
-Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
-Path(NON_JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
-def next_path_index(path):
-    l=glob.glob(path+'/[0-9]*.png')
-    if len(l)==0:
-        return 0
-    else:
-        l2=sorted(l)
-        last=l2[-1]
-        last2=last.split('/')[-1]
-        last3=last2.split('.')[0]
-        next=int(last3)+1 # strip .png
-        return next
-
-next_joker_index=next_path_index(JOKERS_FOLDER)
-next_non_joker_index=next_path_index(NON_JOKERS_FOLDER)
-cv2_resized=dict()
-finger_out_time=0
-STATE_IDLE=0
-STATE_FINGER_OUT=1
-state=STATE_IDLE
-
-log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('GPU'))>0 else 'not available (check tensorflow/cuda setup)'))
-
-def show_frame(frame,name, resized_dict):
-    """ Show the frame in named cv2 window and handle resizing
-
-    :param frame: 2d array of float
-    :param name: string name for window
-    """
-    cv2.namedWindow(name,  cv2.WINDOW_NORMAL)
-    cv2.imshow(name, frame)
-    if not (name in resized_dict):
-        cv2.resizeWindow(name, 300, 300)
-        resized_dict[name] = True
-        # wait minimally since interp takes time anyhow
-        cv2.waitKey(1)
-
-
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='consumer: Consumes DVS frames for trixy to process', allow_abbrev=True,
@@ -104,8 +33,84 @@ if __name__ == '__main__':
     parser.add_argument(
         "--latency_test", action='store_true',
         help="test end to end latency activating finger on every received frame after inference but only once per 2s")
+    parser.add_argument(
+        "--serial_port", type=str, default=SERIAL_PORT,
+        help="serial port, e.g. /dev/ttyUSB0")
 
     args = parser.parse_args()
+
+    log.info('opening UDP port {} to receive frames from producer'.format(PORT))
+    server_socket: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    address = ("", PORT)
+    server_socket.bind(address)
+    existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*.tflite')
+    if len(existing_models) > 0:
+        latest_model = max(existing_models, key=os.path.getmtime)
+    else:
+        log.error(f'no TFLITE model found in {MODEL_DIR}')
+        quit(1)
+
+    log.info('loading latest tflite CNN model {}'.format(latest_model))
+
+    # model = load_model(MODEL)
+    # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
+    interpreter = tf.lite.Interpreter(model_path=latest_model)
+    interpreter.allocate_tensors()
+    # Get input and output tensors.
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    serial_port = args.serial_port
+    log.info('opening serial port {} to send commands to finger'.format(serial_port))
+    arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
+
+    log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to recieve the {IMSIZE}x{IMSIZE} images')
+
+    saved_non_jokers = collections.deque(maxlen=NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER)  # lists of images to save
+    Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
+    Path(NON_JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
+
+
+    def next_path_index(path):
+        l = glob.glob(path + '/[0-9]*.png')
+        if len(l) == 0:
+            return 0
+        else:
+            l2 = sorted(l)
+            last = l2[-1]
+            last2 = last.split('/')[-1]
+            last3 = last2.split('.')[0]
+            next = int(last3) + 1  # strip .png
+            return next
+
+
+    next_joker_index = next_path_index(JOKERS_FOLDER)
+    next_non_joker_index = next_path_index(NON_JOKERS_FOLDER)
+    cv2_resized = dict()
+    finger_out_time = 0
+    STATE_IDLE = 0
+    STATE_FINGER_OUT = 1
+    state = STATE_IDLE
+
+    log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('GPU')) > 0 else 'not available (check tensorflow/cuda setup)'))
+
+
+    def show_frame(frame, name, resized_dict):
+        """ Show the frame in named cv2 window and handle resizing
+
+        :param frame: 2d array of float
+        :param name: string name for window
+        """
+        cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+        cv2.imshow(name, frame)
+        if not (name in resized_dict):
+            cv2.resizeWindow(name, 300, 300)
+            resized_dict[name] = True
+            # wait minimally since interp takes time anyhow
+            cv2.waitKey(1)
+
+
     latency_test=args.latency_test
     last_latency_test_time=time.time()
     last_frame_number=0

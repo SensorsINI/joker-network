@@ -5,6 +5,7 @@
 # author: Tobi Delbruck
 import argparse
 import glob
+from pathlib import Path
 
 import tensorflow as tf
 from keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -21,9 +22,12 @@ import datetime
 
 INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest saved model
 
+start_time=time.time()
+start_timestr = time.strftime("%Y%m%d-%H%M")
 log= logging.getLogger(__name__)
 log.setLevel(LOGGING_LEVEL)
-LOG_FILE='training.log'
+Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+LOG_FILE=os.path.join(LOG_DIR,f'training-{start_timestr}.log')
 fh=logging.FileHandler(LOG_FILE,'w') # 'w' to overwrite, not append
 fh.setLevel(logging.INFO)
 fmtter=logging.Formatter(fmt= "%(asctime)s-%(levelname)s-%(message)s")
@@ -81,7 +85,7 @@ def create_model():
 
 args=None # if run as module
 model_folder=None
-tflite_model_name=None
+tflite_model_path=None
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -93,8 +97,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-start_time=time.time()
-start_timestr = time.strftime("%Y%m%d-%H%M")
 log.info(f'Tensorflow version {tf.version.VERSION}')
 log.info(f'dataset path: TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}')
 
@@ -103,11 +105,11 @@ checkpoint_filename='joker_net_checkpoint.hdf5'
 
 model = create_model()
 if INITIALIZE_MODEL_FROM_LATEST:
-    existing_model_folders=glob.glob(JOKER_NET_BASE_NAME+ '*/')
+    existing_model_folders=glob.glob(MODEL_DIR+'/'+JOKER_NET_BASE_NAME+ '*/')
     TIMEOUT=30
     if len(existing_model_folders)>0:
         latest_model_folder=max(existing_model_folders, key=os.path.getmtime)
-        getmtime_checkpoint = os.path.getmtime(checkpoint_filename)
+        getmtime_checkpoint = os.path.getmtime(checkpoint_filename) if os.path.isfile(checkpoint_filename) else 0
         getmtime_stored_model= os.path.getmtime(latest_model_folder)
         if os.path.isfile(checkpoint_filename)\
                 and getmtime_checkpoint > getmtime_stored_model \
@@ -144,41 +146,47 @@ test_batch_size = 64
 log.info('making training generator')
 train_datagen = ImageDataGenerator( #实例化
     rescale=1./255, # todo check this
-    rotation_range = 30,  #图片随机转动的角度
+    rotation_range = 20,  #图片随机转动的角度
     width_shift_range = 0.3, #图片水平偏移的幅度
     height_shift_range = 0.3, #图片竖直偏移的幅度
     zoom_range = 0.2,
-    horizontal_flip=True) #随机放大或缩小
+    horizontal_flip=False) #随机放大或缩小
 
 log.info('making training generator')
 train_generator = train_datagen.flow_from_directory(
-        TRAIN_DATA_FOLDER + '/train/',
-        target_size=(IMSIZE, IMSIZE),
-        batch_size=train_batch_size,
-        class_mode='categorical',
-        color_mode='grayscale')
+    TRAIN_DATA_FOLDER + '/train/',
+    target_size=(IMSIZE, IMSIZE),
+    batch_size=train_batch_size,
+    class_mode='categorical',
+    color_mode='grayscale',
+    shuffle=True)
 
 log.info('making validation generator')
 valid_generator = train_datagen.flow_from_directory(
-        TRAIN_DATA_FOLDER + '/valid/',
-        target_size=(IMSIZE, IMSIZE),
-        batch_size=test_batch_size,
-        class_mode='categorical',
-        color_mode='grayscale')
+    TRAIN_DATA_FOLDER + '/valid/',
+    target_size=(IMSIZE, IMSIZE),
+    batch_size=test_batch_size,
+    class_mode='categorical',
+    color_mode='grayscale',
+    shuffle=True)
 
 log.info('making test generator')
-test_generator = train_datagen.flow_from_directory(
-        TRAIN_DATA_FOLDER + '/test/',
-        target_size=(IMSIZE, IMSIZE),
-        batch_size=test_batch_size,
-        class_mode='categorical',
-        color_mode='grayscale',
-        shuffle=False) # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
+test_datagen = ImageDataGenerator( rescale=1. / 255)
+test_generator =test_datagen.flow_from_directory( #实例化
+    TRAIN_DATA_FOLDER + '/test/',
+    target_size=(IMSIZE, IMSIZE),
+    batch_size=test_batch_size,
+    class_mode='categorical',
+    color_mode='grayscale',
+    shuffle=False,
+    # save_to_dir='test_gen_samples',
+    # save_prefix=''
+    )  # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
+# Path('test_gen_samples').mkdir(parents=True, exist_ok=True)
 
 def print_datagen_summary(gen: ImageDataGenerator):
     nsamp=gen.samples
-    num_joker=np.count_nonzero(gen.labels)
-    num_nonjoker=nsamp-num_joker
+    num_joker,num_nonjoker=np.bincount(gen.labels)
     def pc(n):
         return 100*float(n)/nsamp
     log.info(f'summary of {gen.directory}:'
@@ -188,7 +196,7 @@ print_datagen_summary(train_generator)
 print_datagen_summary(valid_generator)
 print_datagen_summary(test_generator)
 
-stop_early = EarlyStopping(monitor='val_loss', patience=3, verbose=1, mode='min')
+stop_early = EarlyStopping(monitor='val_loss', patience=6, verbose=1, mode='min')
 save_checkpoint = ModelCheckpoint(checkpoint_filename, save_best_only=True, monitor='val_loss', mode='min')
 # Profile from batches 10 to 15
 tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log',
@@ -198,15 +206,17 @@ if args is None or not args.test_accuracy:
     log.info('starting training')
     history=None
     try:
-        history = model.fit(train_generator, # todo back to train generator
-                  # steps_per_epoch=150,
-                  epochs=300, verbose=1,
-                  validation_data=valid_generator,
-                  # validation_steps=25,
-                  callbacks=[stop_early, save_checkpoint,tb_callback],
-                  # max_queue_size=capacity,
-                  shuffle = True,
-                  workers=1)
+        history = model.fit(train_generator,  # todo back to train generator
+                            # steps_per_epoch=150,
+                            epochs=300, verbose=1,
+                            validation_data=valid_generator,
+                            # validation_steps=25,
+                            callbacks=[stop_early, save_checkpoint, tb_callback],
+                            # max_queue_size=capacity,
+                            # shuffle = True, # shuffle not valid for folder data generators
+                            workers=1,
+                            class_weight={0:1.5, 1: 0.5} # weight jokers more since there are fewer othem
+                            )
         if history is not None:
             try:
                 training_history_filename='training_history.npy'
@@ -220,7 +230,7 @@ if args is None or not args.test_accuracy:
                 plt.title('model accuracy')
                 plt.ylabel('accuracy')
                 plt.xlabel('epoch')
-                plt.legend(['train', 'test'], loc='upper left')
+                plt.legend(['train', 'validate'], loc='upper left')
                 plt.show()
                 # summarize history for loss
                 plt.plot(history.history['loss'])
@@ -228,14 +238,15 @@ if args is None or not args.test_accuracy:
                 plt.title('model loss')
                 plt.ylabel('loss')
                 plt.xlabel('epoch')
-                plt.legend(['train', 'test'], loc='upper left')
+                plt.legend(['train', 'validate'], loc='upper left')
                 plt.show()
             except KeyError as k:
                 log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
     except KeyboardInterrupt:
         log.warning('keyboard interrupt, saving model and testing')
 
-    model_folder= f'{JOKER_NET_BASE_NAME}_{start_timestr}'
+    Path(MODEL_DIR).mkdir(parents=True, exist_ok=True)
+    model_folder= os.path.join(MODEL_DIR,f'{JOKER_NET_BASE_NAME}_{start_timestr}')
 
     log.info(f'saving model to folder {model_folder}')
     model.save(model_folder)
@@ -243,10 +254,10 @@ if args is None or not args.test_accuracy:
     log.info('converting model to tensorflow lite model')
     converter = tf.lite.TFLiteConverter.from_saved_model(model_folder) # path to the SavedModel directory
     tflite_model = converter.convert()
-    tflite_model_name=f'{model_folder}.tflite'
+    tflite_model_path=os.path.join(MODEL_DIR, f'{model_folder}.tflite')
 
-    log.info(f'saving tflite model as {tflite_model_name}')
-    with open(tflite_model_name, 'wb') as f:
+    log.info(f'saving tflite model as {tflite_model_path}')
+    with open(tflite_model_path, 'wb') as f:
       f.write(tflite_model)
     # end training part
 
@@ -271,6 +282,6 @@ np.set_printoptions(precision=2)
 # disp.ax_.set_title('joker/nonjoker confusion matrix')
 
 elapsed_time_min=(time.time()-start_time)/60
-log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {model_folder} and {tflite_model_name}.'
+log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {model_folder} and {tflite_model_path}.'
          f'\nSee {LOG_FILE} for logging output for this run.')
 

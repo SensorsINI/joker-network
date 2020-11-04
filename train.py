@@ -5,8 +5,12 @@
 # author: Tobi Delbruck
 import argparse
 import glob
+import shelve
 from pathlib import Path
 from random import random
+from shutil import copyfile
+from tkinter import filedialog
+from tkinter import *
 
 import tensorflow as tf
 from keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -14,6 +18,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
+from numpy import sort
 from tensorflow.python.keras.models import load_model
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix, plot_confusion_matrix
 import matplotlib.pyplot as plt
@@ -27,16 +32,24 @@ INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest sav
 log= my_logger(__name__)
 log.setLevel(LOGGING_LEVEL)
 
-def rename_images(folder):
+def rename_images():
     """ Cleans up a folder filled with images (png and jpg) so that the images are numbered consecutively. Useful after using mv --backup=t to add new images to a folder
     :param folder: the folder name to clean up, relative to working directory
     """
+    folder=SRC_DATA_FOLDER
+    root = Tk()
+    root.withdraw()
+    os.chdir(folder)
+    folder = filedialog.askdirectory()
+    if len(folder)==0:
+        log.info('aborted')
+        quit(1)
     os.chdir(folder)
     if not os.path.exists('tmp'):
         os.mkdir('tmp')
-    ls = os.listdir()
+    ls = os.listdir() # glob.glob('./*')
+    ls=sorted(ls, key=lambda f: os.stat(f).st_mtime)
     log.info(f'folder {folder} has {len(ls)} files')
-    ls = sorted(ls)
     i = 0
     log.info('renaming files to tmp folder')
     for f in tqdm(ls):
@@ -152,14 +165,15 @@ def test_random_samples():
             # pred = interpreter.get_tensor(output_details[0]['index'])
 
             dec = 'joker' if np.argmax(pred[0]) == 1 else 'nonjoker'
+            joker_prob = pred[0][1]
             correct = 'right' if ((dec == 'joker' and c == 2) or (dec == 'nonjoker' and c == 1)) else 'wrong'
+            win_name = f'{correct}: Real class:class{c}/{gt_class} detected as {dec} (joker_prob={joker_prob:.2f})'
             if correct == 'wrong':  # save wrong classifications for later
                 copy_folder = TRAIN_DATA_FOLDER + '/incorrect/' + f'class{c}'
                 Path(copy_folder).mkdir(parents=True, exist_ok=True)
                 log.info(f'saving file {image_file_name} as incorrect {gt_class} classified as {dec}')
                 copyfile(image_file_path, os.path.join(copy_folder, image_file_name))
-            joker_prob = pred[0][1]
-            win_name = f'{correct}: Real class:class{c}/{gt_class} detected as {dec} (joker_prob={joker_prob:.2f})'
+            print(f'{image_file_path} {win_name}')
             cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
             windows.append(win_name)
             cv2.imshow(win_name, np.array(img))
@@ -202,10 +216,16 @@ def get_flops():
 
     with graph.as_default():
         with session.as_default():
-            model = tf.keras.models.load_model(MODEL)
-
+            model=load_latest_model()
             run_meta = tf.compat.v1.RunMetadata()
             opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+
+            image_file_path = os.path.join('data/joker.png')
+            img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
+            input_arr = tf.keras.preprocessing.image.img_to_array(img)
+            input_arr = (1. / 255) * np.array([input_arr])  # Convert single image to a batch.
+            pred = model.predict(input_arr)
+
 
             # Optional: save printed results to file
             flops_log_path = os.path.join('.', 'tf_flops_log.txt')
@@ -267,7 +287,10 @@ def create_model():
     return model
 
 
-def train():
+def train(args=None):
+    model_name = None
+    tflite_model_name = None
+
     start_time = time.time()
     start_timestr = time.strftime("%Y%m%d-%H%M")
     Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
@@ -283,37 +306,42 @@ def train():
     log.info(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
 
     num_classes = 2
-    checkpoint_filename = 'joker_net_checkpoint.hdf5'
+    checkpoint_filename_path = os.path.join(MODEL_DIR, 'models/joker_net_checkpoint.hdf5')
 
     model = create_model()
+    latest_existing_model_folder=None
     if INITIALIZE_MODEL_FROM_LATEST:
         existing_model_folders = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '*/')
         TIMEOUT = 30
         if len(existing_model_folders) > 0:
-            latest_model_folder = max(existing_model_folders, key=os.path.getmtime)
-            getmtime_checkpoint = os.path.getmtime(checkpoint_filename) if os.path.isfile(checkpoint_filename) else 0
-            getmtime_stored_model = os.path.getmtime(latest_model_folder)
-            if os.path.isfile(checkpoint_filename) \
+            latest_existing_model_folder = max(existing_model_folders, key=os.path.getmtime)
+            getmtime_checkpoint = os.path.getmtime(checkpoint_filename_path) if os.path.isfile(checkpoint_filename_path) else 0
+            getmtime_stored_model = os.path.getmtime(latest_existing_model_folder)
+            if os.path.isfile(checkpoint_filename_path) \
                     and getmtime_checkpoint > getmtime_stored_model \
-                    and yes_or_no(f'checkpoint {checkpoint_filename} modified {datetime.datetime.fromtimestamp(getmtime_checkpoint)} \nis newer than saved model {existing_model_folders[0]} modified {datetime.datetime.fromtimestamp(getmtime_stored_model)},\n start from it?', timeout=TIMEOUT):
-                log.info(f'loading weights from checkpoint {checkpoint_filename}')
-                model.load_weights(checkpoint_filename)
+                    and yes_or_no(f'checkpoint {checkpoint_filename_path} modified {datetime.datetime.fromtimestamp(getmtime_checkpoint)} \nis newer than saved model {existing_model_folders[0]} modified {datetime.datetime.fromtimestamp(getmtime_stored_model)},\n start from it?', timeout=TIMEOUT):
+                log.info(f'loading weights from checkpoint {checkpoint_filename_path}')
+                model.load_weights(checkpoint_filename_path)
             else:
-                if yes_or_no(f'model {latest_model_folder} exists, start from it?', timeout=TIMEOUT):
-                    log.info(f'initializing model from {latest_model_folder}')
-                    model = load_model(latest_model_folder)
+                if yes_or_no(f'model {latest_existing_model_folder} exists, start from it?', timeout=TIMEOUT):
+                    log.info(f'initializing model from {latest_existing_model_folder}')
+                    model = load_model(latest_existing_model_folder)
                 else:
                     log.info('creating new empty model')
                     model = create_model()
         else:
-            if os.path.isfile(checkpoint_filename) and yes_or_no('checkpoint exists, start from it?', timeout=TIMEOUT):
-                log.info(f'loading weights from checkpoint {checkpoint_filename}')
+            if os.path.isfile(checkpoint_filename_path) and yes_or_no('checkpoint exists, start from it?', timeout=TIMEOUT):
+                log.info(f'loading weights from checkpoint {checkpoint_filename_path}')
                 model = create_model()
-                model.load_weights(checkpoint_filename)
+                model.load_weights(checkpoint_filename_path)
             else:
                 yn = yes_or_no("Could not find saved model or checkpoint. Initialize a new model?", timeout=TIMEOUT)
-                log.info('creating new empty model')
-                model = create_model()
+                if yn:
+                    log.info('creating new empty model')
+                    model = create_model()
+                else:
+                    log.warning('aborting training')
+                    quit(1)
     else:
         log.info('creating new empty model')
     model.compile(loss='categorical_crossentropy',
@@ -382,12 +410,12 @@ def train():
     print_datagen_summary(test_generator)
 
     stop_early = EarlyStopping(monitor='val_loss', patience=6, verbose=1, mode='min')
-    save_checkpoint = ModelCheckpoint(checkpoint_filename, save_best_only=True, monitor='val_loss', mode='min')
+    save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
     # Profile from batches 10 to 15
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log',
                                                  profile_batch='10, 15')
 
-    if args is None or not args.test_accuracy:
+    if args.train:
         log.info('starting training')
         history = None
         try:
@@ -400,12 +428,12 @@ def train():
                                 # max_queue_size=capacity,
                                 # shuffle = True, # shuffle not valid for folder data generators
                                 workers=1,
-                                class_weight={0: 5, 1: 1}  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
+                                class_weight={0: 1, 1: .05}  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
                                 # it is better to avoid poking out finr until a joker is definitely detected
                                 )
             if history is not None:
                 try:
-                    training_history_filename = 'training_history.npy'
+                    training_history_filename = os.path.join(LOG_DIR, 'training_history'+'-'+start_timestr+'.npy')
                     np.save(training_history_filename, history.history)
                     log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
                     log.info(f'history.history.keys()={history.history.keys()}')
@@ -417,6 +445,7 @@ def train():
                     plt.ylabel('accuracy')
                     plt.xlabel('epoch')
                     plt.legend(['train', 'validate'], loc='upper left')
+                    plt.savefig(os.path.join(LOG_DIR,'accuracy'+'-'+start_timestr+'.png'))
                     plt.show()
                     # summarize history for loss
                     plt.plot(history.history['loss'])
@@ -425,22 +454,22 @@ def train():
                     plt.ylabel('loss')
                     plt.xlabel('epoch')
                     plt.legend(['train', 'validate'], loc='upper left')
+                    plt.savefig(os.path.join(LOG_DIR,'loss'+'-'+start_timestr+'.png'))
                     plt.show()
                 except KeyError as k:
                     log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
         except KeyboardInterrupt:
             log.warning('keyboard interrupt, saving model and testing')
 
-        Path(MODEL_DIR).mkdir(parents=True, exist_ok=True)
-        model_folder = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}_{start_timestr}')
+        new_model_folder_name = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}_{start_timestr}')
 
-        log.info(f'saving model to folder {model_folder}')
-        model.save(model_folder)
+        log.info(f'saving model to folder {new_model_folder_name}')
+        model.save(new_model_folder_name)
 
         log.info('converting model to tensorflow lite model')
-        converter = tf.lite.TFLiteConverter.from_saved_model(model_folder)  # path to the SavedModel directory
+        converter = tf.lite.TFLiteConverter.from_saved_model(new_model_folder_name)  # path to the SavedModel directory
         tflite_model = converter.convert()
-        tflite_model_path = os.path.join(MODEL_DIR, f'{model_folder}.tflite')
+        tflite_model_path = os.path.join(new_model_folder_name, TFLITE_FILE_NAME)
 
         log.info(f'saving tflite model as {tflite_model_path}')
         with open(tflite_model_path, 'wb') as f:
@@ -459,7 +488,7 @@ def train():
     y_true = gen.labels  # vector of ground truth classes, 0 or 1 for nonjoker/joker
     balanced_accuracy = balanced_accuracy_score(y_true, y_pred)
     conf_matrix = confusion_matrix(y_true, y_pred)
-    log.info(f'**** final test set balanced accuracy: {balanced_accuracy * 100:6.3f}\% (chance would be 50\%)\nConfusion matrix nonjoker/joker:\n {conf_matrix}')
+    log.info(f'**** final test set balanced accuracy: {balanced_accuracy * 100:6.3f}% (chance would be 50%)\nConfusion matrix nonjoker/joker:\n {conf_matrix}')
     np.set_printoptions(precision=2)
     # disp = plot_confusion_matrix(classifier, X_test, y_test,
     #                                  display_labels=['nonjoker','joker'],
@@ -468,27 +497,27 @@ def train():
     # disp.ax_.set_title('joker/nonjoker confusion matrix')
 
     elapsed_time_min = (time.time() - start_time) / 60
-    log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {model_folder} and {tflite_model_path}.'
+    if args.train:
+        log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {new_model_folder_name}.'
              f'\nSee {LOG_FILE} for logging output for this run.')
 
 
 args=None # if run as module
-model_folder=None
-tflite_model_path=None
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='train:train CNN for txsy', allow_abbrev=True, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--test_accuracy", action='store_true', help="run network test rather than train")
-    parser.add_argument("--rename_images", type=str, default=None, help="rename images in the folder consecutively.")
+    parser = argparse.ArgumentParser(description='train:train CNN for trixsy', allow_abbrev=True, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--train", action='store_true', help="train model starting from latest (shows options to choose whether to initialize.")
+    parser.add_argument("--test_accuracy", action='store_true', help="run network test rather than train.")
+    parser.add_argument("--rename_images",  action='store_true', help="rename images in a folder consecutively sorting them by mtime.")
     parser.add_argument("--make_training_set", action='store_true', help="make training data from source images.")
     parser.add_argument("--test_random_samples", action='store_true', help="test random samples from test set.")
     parser.add_argument("--measure_flops", action='store_true', help="measures flops/frame of network.")
 
     args = parser.parse_args()
-    if args.train:
-        train()
+    if args.train or args.test_accuracy:
+        train(args)
     elif args.rename_images:
-        rename_images(args.rename_images)
+        rename_images()
     elif args.make_training_set:
         make_training_set()
     elif args.test_random_samples:

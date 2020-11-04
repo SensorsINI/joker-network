@@ -17,8 +17,6 @@ PORT = 12000  # UDP port used to send frames from producer to consumer
 IMSIZE = 224  # input image size, must match model
 UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
 
-MODEL='joker_net_20201030-1740'
-MODEL_LITE = 'joker.tflite'  # joker network model
 EVENT_COUNT_PER_FRAME = 3000  # events per frame
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for colleting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
@@ -39,8 +37,9 @@ LOG_DIR='logs'
 SRC_DATA_FOLDER = '/home/tobi/Downloads/trixsyDataset/source_data'
 TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
-MODEL_DIR='models'
-JOKER_NET_BASE_NAME='joker_net'
+MODEL_DIR='models' # where models stored
+JOKER_NET_BASE_NAME='joker_net' # base name
+TFLITE_FILE_NAME=JOKER_NET_BASE_NAME+'.tflite' # tflite model is stored in same folder as full-blown TF2 model
 CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
 
 import signal

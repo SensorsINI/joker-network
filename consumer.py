@@ -44,18 +44,23 @@ if __name__ == '__main__':
 
     address = ("", PORT)
     server_socket.bind(address)
-    existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*.tflite')
+    existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME +'_*/')
+    tflite_model_path=None
     if len(existing_models) > 0:
-        latest_model = max(existing_models, key=os.path.getmtime)
+        latest_model_folder = max(existing_models, key=os.path.getmtime)
+        tflite_model_path=os.path.join(latest_model_folder,TFLITE_FILE_NAME)
+        if not os.path.isfile(tflite_model_path):
+            log.error(f'no TFLITE model found at {tflite_model_path}')
+            quit(1)
     else:
-        log.error(f'no TFLITE model found in {MODEL_DIR}')
+        log.error(f'no models found in {MODEL_DIR}')
         quit(1)
 
-    log.info('loading latest tflite CNN model {}'.format(latest_model))
+    log.info('loading latest tflite CNN model {}'.format(tflite_model_path))
 
     # model = load_model(MODEL)
     # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
-    interpreter = tf.lite.Interpreter(model_path=latest_model)
+    interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
     interpreter.allocate_tensors()
     # Get input and output tensors.
     input_details = interpreter.get_input_details()

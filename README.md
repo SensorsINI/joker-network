@@ -24,12 +24,12 @@ Test environment:
  **Make a conda environment**, activate it, then in it install the libraries.
  
 ```
-pip install opencv-python tensorflow keras pyserial pyaer engineering_notation matplotlib
+pip install opencv-python tensorflow keras pyserial pyaer engineering_notation matplotlib sklearn flopco-keras
 ```
 or
 ```
 conda install keras tensorflow opencv numpy pyserial  -c conda-forge
-pip install pyaer engineering_notation sklearn
+pip install pyaer engineering_notation sklearn  flopco-keras
 ```
 
 #### Note about pip vs conda
@@ -59,7 +59,7 @@ python -m producer
  2. In a second terminal, run consumer
 ```shell script
 python -m consumer  arduinoPort
-example: python -m consumer.py /dev/ttyUSB0
+example: python -m consumer.py 
 ```
 
 

@@ -10,17 +10,25 @@ from random import random
 from shutil import copyfile
 from tkinter import filedialog
 from tkinter import *
+
+# uncomment lines to run on CPU
+# import os
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import tensorflow as tf
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
-from keras.preprocessing.image import ImageDataGenerator
+# from alessandro: use keras from tensorflow, not from keras directly
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import Dense, Dropout, Activation, Flatten
+from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
+from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.python.keras.models import load_model
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix, plot_confusion_matrix
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import random
+from engineering_notation import EngNumber  as eng # only from pip
 
 from globals_and_utils import *
 import datetime
@@ -29,6 +37,9 @@ INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest sav
 
 log= my_logger(__name__)
 log.setLevel(LOGGING_LEVEL)
+import logging
+import sys
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 def rename_images():
     """ Cleans up a folder filled with images (png and jpg) so that the images are numbered consecutively. Useful after using mv --backup=t to add new images to a folder
@@ -212,31 +223,44 @@ def load_latest_model():
 
 
 def get_flops():
-    session = tf.compat.v1.Session()
-    graph = tf.compat.v1.get_default_graph()
+    from flopco_keras import FlopCoKeras
+    import tensorflow as tf
 
-    with graph.as_default():
-        with session.as_default():
-            model=load_latest_model()
-            run_meta = tf.compat.v1.RunMetadata()
-            opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+    model = load_latest_model() #tf.keras.applications.ResNet101()
+    flopco=FlopCoKeras(model)
+    flopco.get_stats()
 
-            image_file_path = os.path.join('data/joker.png')
-            img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
-            input_arr = tf.keras.preprocessing.image.img_to_array(img)
-            input_arr = (1. / 255) * np.array([input_arr])  # Convert single image to a batch.
-            pred = model.predict(input_arr)
+    log.info(f"Op/frame: {eng(flopco.total_flops)}")
+    log.info(f"MAC/frame: {eng(flopco.total_macs)}")
+    log.info(f"Relative Op per layer: {flopco.relative_flops}")
 
+    return flopco
 
-            # Optional: save printed results to file
-            flops_log_path = os.path.join('.', 'tf_flops_log.txt')
-            opts['output'] = 'file:outfile={}'.format(flops_log_path)
-
-            # We use the Keras session graph in the call to the profiler.
-            flops = tf.compat.v1.profiler.profile(graph=graph,
-                                                  run_meta=run_meta, cmd='op', options=opts)
-
-            return flops.total_float_ops
+    # session = tf.compat.v1.Session()
+    # graph = tf.compat.v1.get_default_graph()
+    #
+    # with graph.as_default():
+    #     with session.as_default():
+    #         model=load_latest_model()
+    #         run_meta = tf.compat.v1.RunMetadata()
+    #         opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+    #
+    #         image_file_path = os.path.join('data/joker.png')
+    #         img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
+    #         input_arr = tf.keras.preprocessing.image.img_to_array(img)
+    #         input_arr = (1. / 255) * np.array([input_arr])  # Convert single image to a batch.
+    #         pred = model.predict(input_arr)
+    #
+    #
+    #         # Optional: save printed results to file
+    #         flops_log_path = os.path.join('.', 'tf_flops_log.txt')
+    #         opts['output'] = 'file:outfile={}'.format(flops_log_path)
+    #
+    #         # We use the Keras session graph in the call to the profiler.
+    #         flops = tf.compat.v1.profiler.profile(graph=graph,
+    #                                               run_meta=run_meta, cmd='op', options=opts)
+    #
+    #         return flops.total_float_ops
 
 # AlexNet
 def create_model():
@@ -345,8 +369,9 @@ def train(args=None):
                     quit(1)
     else:
         log.info('creating new empty model')
-    optimizer='adam'
-    model.compile(loss='categorical_crossentropy',
+    optimizer=tf.keras.optimizers.SGD(momentum=.9) # alessandro: SGD gives higher accuracy than Adam but include a momentuum
+    loss=tf.keras.losses.CategoricalCrossentropy()
+    model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=['categorical_accuracy'])
     model.summary(print_fn=log.info)
@@ -358,11 +383,12 @@ def train(args=None):
     log.info('making training generator')
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
-        rotation_range=20,  # 图片随机转动的角度
-        width_shift_range=0.3,  # 图片水平偏移的幅度
-        height_shift_range=0.3,  # 图片竖直偏移的幅度
-        zoom_range=0.2,
-        horizontal_flip=False)  # 随机放大或缩小
+        # rotation_range=20,  # 图片随机转动的角度
+        # width_shift_range=0.3,  # 图片水平偏移的幅度
+        # height_shift_range=0.3,  # 图片竖直偏移的幅度
+        # zoom_range=0.2,
+        # horizontal_flip=False
+    )  # 随机放大或缩小
 
     log.info('making training generator')
     train_generator = train_datagen.flow_from_directory(
@@ -421,7 +447,7 @@ def train(args=None):
         log.info('starting training')
         epochs=300
 
-        class_weight = {0: 5, 1: 1}
+        class_weight = {0: .9, 1: .1}
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
         try:
@@ -529,7 +555,8 @@ if __name__ == '__main__':
     elif args.test_random_samples:
         test_random_samples()
     elif args.measure_flops:
-        log.info(f'total flops/frame={get_flops():.3e}')
+        stats=get_flops()
+        log.info(f'total flops/frame={stats.total_flops}')
     else:
         parser.print_help()
 

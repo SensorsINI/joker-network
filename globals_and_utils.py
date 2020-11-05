@@ -4,6 +4,7 @@
 import logging
 import math
 import os
+import sys
 import time
 from subprocess import TimeoutExpired
 
@@ -119,6 +120,7 @@ class CustomFormatter(logging.Formatter):
 
 
 def my_logger(name):
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     logger = logging.getLogger(name)
     logger.setLevel(LOGGING_LEVEL)
     # create console handler with a higher log level

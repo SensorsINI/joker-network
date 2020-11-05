@@ -123,6 +123,50 @@ def make_training_set():
 
     log.info(f'done generating training set from {nfiles_dict[0]} nonjokers and {nfiles_dict[1]} joker source images split train/valid/test {SPLIT}')
 
+def riffle_test():
+    """ Runs test on folder of video sequence and pause at detected jokers
+    """
+    log.info('evaluating riffle')
+    log.info(f'Tensorflow version {tf.version.VERSION}')
+    interpreter, input_details, output_details=load_tflite_model()
+    folder=SRC_DATA_FOLDER
+    root = Tk()
+    root.withdraw()
+    os.chdir(folder)
+    folder = filedialog.askdirectory()
+    if len(folder)==0:
+        log.info('aborted')
+        quit(1)
+    os.chdir(folder)
+    ls=os.listdir()
+    ls=sorted(ls)
+    first=True
+    while True:
+        if first:
+            start=random.randint(0,len(ls))
+            first=False
+        else:
+            start=0
+        for image_file_path in ls[start:]:
+            img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
+            input_arr = tf.keras.preprocessing.image.img_to_array(img)
+            img =np.array(input_arr)
+            dec, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
+            if dec==1:
+                cv2.putText(img,'Joker',(10,30),cv2.FONT_HERSHEY_PLAIN,2,(255,255,255),2)
+                print('\a') # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
+            cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+            cv2.imshow('frame', np.array(img))
+            cv2.resizeWindow('frame', 800, 400)
+
+            if dec == 0:
+                k = cv2.waitKey(15) & 0xff
+            else:
+                k = cv2.waitKey(2000) & 0xff
+            if k == 27 or k == ord('q') or k == ord('x'):
+                cv2.destroyAllWindows()
+                quit()
+
 
 def test_random_samples():
     """ Runs test on test folder to evaluate accuracy on example images
@@ -204,6 +248,24 @@ def test_random_samples():
             if idx[c-1] >= len(ls[c-1]): idx[c-1] = 0
 
 
+def classify_joker_img(img: np.array, interpreter, input_details, output_details):
+    """ Classify uint8 img
+
+    :param img: input image as unit8 np.array
+    :param interpreter: the TFLITE interpreter
+    :param input_details: the input details of interpreter
+    :param output_details: the output details of interpreter
+
+    :returns: decision (0 or 1), joker_probability (0-1), prediction[2]=[nonjoker, joker]
+    """
+    interpreter.set_tensor(input_details[0]['index'], (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32))
+    interpreter.invoke()
+    pred = interpreter.get_tensor(output_details[0]['index'])
+    dec = np.argmax(pred[0])
+    joker_prob = pred[0][1]
+    return dec, joker_prob, pred
+
+
 def load_latest_model():
     existing_model_folders = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '*/')
     model = None
@@ -220,6 +282,34 @@ def load_latest_model():
         log.error('no model found to load')
         quit(1)
     return model
+
+
+def load_tflite_model():
+    """ loads the most recent trained TFLITE model
+
+    :returns: interpreter,input_details,output_details
+    """
+    existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
+    tflite_model_path = None
+    if len(existing_models) > 0:
+        latest_model_folder = max(existing_models, key=os.path.getmtime)
+        tflite_model_path = os.path.join(latest_model_folder, TFLITE_FILE_NAME)
+        if not os.path.isfile(tflite_model_path):
+            log.error(f'no TFLITE model found at {tflite_model_path}')
+            quit(1)
+    else:
+        log.error(f'no models found in {MODEL_DIR}')
+        quit(1)
+    log.info('loading latest tflite CNN model {}'.format(tflite_model_path))
+    # model = load_model(MODEL)
+    # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
+    interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+    interpreter.allocate_tensors()
+    # Get input and output tensors.
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    return interpreter, input_details, output_details
 
 
 def get_flops():
@@ -540,6 +630,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='train:train CNN for trixsy', allow_abbrev=True, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--train", action='store_true', help="train model starting from latest (shows options to choose whether to initialize.")
     parser.add_argument("--test_accuracy", action='store_true', help="run network test rather than train.")
+    parser.add_argument("--riffle_test", action='store_true', help="test by pausing playback/classify of recorded frames at detected jokers.")
     parser.add_argument("--rename_images",  action='store_true', help="rename images in a folder consecutively sorting them by mtime.")
     parser.add_argument("--make_training_set", action='store_true', help="make training data from source images.")
     parser.add_argument("--test_random_samples", action='store_true', help="test random samples from test set.")
@@ -554,6 +645,8 @@ if __name__ == '__main__':
         make_training_set()
     elif args.test_random_samples:
         test_random_samples()
+    elif args.riffle_test:
+        riffle_test()
     elif args.measure_flops:
         stats=get_flops()
         log.info(f'total flops/frame={stats.total_flops}')

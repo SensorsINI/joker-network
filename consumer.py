@@ -18,6 +18,8 @@ import collections
 from pathlib import Path
 import random
 
+from train import load_tflite_model, classify_joker_img
+
 log=my_logger(__name__)
 
 # Only used in mac osx
@@ -25,6 +27,8 @@ try:
     os.environ['KMP_DUPLICATE_LIB_OK']='True'
 except Exception as e:
     print(e)
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -44,27 +48,7 @@ if __name__ == '__main__':
 
     address = ("", PORT)
     server_socket.bind(address)
-    existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME +'_*/')
-    tflite_model_path=None
-    if len(existing_models) > 0:
-        latest_model_folder = max(existing_models, key=os.path.getmtime)
-        tflite_model_path=os.path.join(latest_model_folder,TFLITE_FILE_NAME)
-        if not os.path.isfile(tflite_model_path):
-            log.error(f'no TFLITE model found at {tflite_model_path}')
-            quit(1)
-    else:
-        log.error(f'no models found in {MODEL_DIR}')
-        quit(1)
-
-    log.info('loading latest tflite CNN model {}'.format(tflite_model_path))
-
-    # model = load_model(MODEL)
-    # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
-    interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
-    interpreter.allocate_tensors()
-    # Get input and output tensors.
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+    interpreter, input_details, output_details=load_tflite_model()
 
     serial_port = args.serial_port
     log.info('opening serial port {} to send commands to finger'.format(serial_port))
@@ -148,11 +132,7 @@ if __name__ == '__main__':
                 # img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                interpreter.set_tensor(input_details[0]['index'], (1./255)*np.array(np.reshape(img, [1,IMSIZE, IMSIZE,1]),dtype=np.float32))
-                interpreter.invoke()
-                pred = interpreter.get_tensor(output_details[0]['index'])
-                dec = np.argmax(pred[0])
-                joker_prob=pred[0][1]
+                dec, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
             if latency_test:
 
                 if time.time()-last_latency_test_time>2:

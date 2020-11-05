@@ -1,6 +1,4 @@
-Trixsy - The card finding magic robot
-
-https://youtu.be/Y0Crn4DU17M
+Trixsy - The card finding magic robot https://youtu.be/Y0Crn4DU17M
 
 Tobi Delbruck demonstrates how Trixsy can find a selected card that is hidden in the deck.
 Trixsy thrusts out its finger at the exactly correct moment as the cards are riffled past its finger.

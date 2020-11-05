@@ -5,24 +5,22 @@
 # author: Tobi Delbruck
 import argparse
 import glob
-import shelve
 from pathlib import Path
 from random import random
 from shutil import copyfile
 from tkinter import filedialog
 from tkinter import *
-
 import tensorflow as tf
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
-from numpy import sort
 from tensorflow.python.keras.models import load_model
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix, plot_confusion_matrix
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import random
 
 from globals_and_utils import *
 import datetime
@@ -87,11 +85,12 @@ def make_training_set():
     os.chdir(SRC_DATA_FOLDER)
     SPLIT = [.8, .1, .1]
     names = ['train', 'valid', 'test']
-
+    nfiles_dict=[]
     for i in [1, 2]:
         sfn = f'class{i}'
         ls = os.listdir(sfn)
         nfiles = len(ls) - 1
+        nfiles_dict.append(nfiles)
         random.shuffle(ls)
         flast = 0
         ranges = []
@@ -110,6 +109,8 @@ def make_training_set():
                 # elif j-r[0]==3:
                 #     print('...')
                 copyfile(sf, df)
+
+    log.info(f'done generating training set from {nfiles_dict[0]} nonjokers and {nfiles_dict[1]} joker source images split train/valid/test {SPLIT}')
 
 
 def test_random_samples():
@@ -344,12 +345,13 @@ def train(args=None):
                     quit(1)
     else:
         log.info('creating new empty model')
+    optimizer='adam'
     model.compile(loss='categorical_crossentropy',
-                  optimizer='sgd',
+                  optimizer=optimizer,
                   metrics=['categorical_accuracy'])
     model.summary(print_fn=log.info)
 
-    train_batch_size = 64
+    train_batch_size = 32
     valid_batch_size = 64
     test_batch_size = 64
 
@@ -375,7 +377,7 @@ def train(args=None):
     valid_generator = train_datagen.flow_from_directory(
         TRAIN_DATA_FOLDER + '/valid/',
         target_size=(IMSIZE, IMSIZE),
-        batch_size=test_batch_size,
+        batch_size=valid_batch_size,
         class_mode='categorical',
         color_mode='grayscale',
         shuffle=True)
@@ -397,13 +399,13 @@ def train(args=None):
 
     def print_datagen_summary(gen: ImageDataGenerator):
         nsamp = gen.samples
-        num_joker, num_nonjoker = np.bincount(gen.labels)
+        num_nonjoker, num_joker = np.bincount(gen.labels)
 
         def pc(n):
             return 100 * float(n) / nsamp
 
         log.info(f'summary of {gen.directory}:'
-                 f' {gen.samples} samples:\t{pc(num_nonjoker):.1f}% nonjoker,\t{pc(num_joker):.1f}% joker\n')
+                 f' {gen.samples} samples:\t{num_nonjoker}/{pc(num_nonjoker):.3f}% nonjoker,\t{num_joker}/{pc(num_joker):.3f}% joker\n')
 
     print_datagen_summary(train_generator)
     print_datagen_summary(valid_generator)
@@ -417,18 +419,22 @@ def train(args=None):
 
     if args.train:
         log.info('starting training')
+        epochs=300
+
+        class_weight = {0: 5, 1: 1}
+        log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
         try:
             history = model.fit(train_generator,  # todo back to train generator
                                 # steps_per_epoch=150,
-                                epochs=300, verbose=1,
+                                epochs=epochs, verbose=1,
                                 validation_data=valid_generator,
                                 # validation_steps=25,
                                 callbacks=[stop_early, save_checkpoint, tb_callback],
                                 # max_queue_size=capacity,
                                 # shuffle = True, # shuffle not valid for folder data generators
                                 workers=1,
-                                class_weight={0: 1, 1: .05}  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
+                                class_weight=class_weight  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
                                 # it is better to avoid poking out finr until a joker is definitely detected
                                 )
             if history is not None:

@@ -83,6 +83,9 @@ def rename_images():
 def make_training_set():
     """ Generates the train/ valid/ and test/ folders in TRAIN_DATA_FOLDER  using the images in SRC_DATA_FOLDER and the split defined by SPLIT variable
     """
+    NUM_FRAMES_PER_SEGMENT=300 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+
+    log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images')
     if not os.path.isdir(TRAIN_DATA_FOLDER):
         log.warning(f'{TRAIN_DATA_FOLDER} does not exist, creating it')
         Path(TRAIN_DATA_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -94,78 +97,90 @@ def make_training_set():
 
     log.info(f'Using source images from {SRC_DATA_FOLDER}')
     os.chdir(SRC_DATA_FOLDER)
-    SPLIT = [.8, .1, .1]
-    names = ['train', 'valid', 'test']
-    nfiles_dict=[]
-    for i in [1, 2]:
-        sfn = f'class{i}'
-        ls = os.listdir(sfn)
+    splits={'train':.8, 'valid':.1, 'test':.1}
+    for cls in ['class1', 'class2']:
+        ls = os.listdir(cls)
         nfiles = len(ls) - 1
-        nfiles_dict.append(nfiles)
-        random.shuffle(ls)
-        flast = 0
-        ranges = []
-        for f in SPLIT:
-            ranges.append([math.floor(flast * nfiles), math.floor((flast + f) * nfiles)])
-            flast += f
-        for (n, r) in zip(names, ranges):
-            dfn = os.path.join(TRAIN_DATA_FOLDER, n, sfn)
-            log.info(f'making {dfn}/ folder for shuffled files from {sfn} in range [{r[0]},{r[1]}')
-            Path(dfn).mkdir(parents=True, exist_ok=True)
-            for j in tqdm(range(r[0], r[1]), desc=f'{sfn}/{n}'):
-                sf = os.path.join(sfn, ls[j])
-                df = os.path.join(dfn, ls[j])
-                # if j-r[0]<3 or j==r[1]-1:
-                #     print(f'copying {sf} -> {df}')
-                # elif j-r[0]==3:
-                #     print('...')
-                copyfile(sf, df)
-
-    log.info(f'done generating training set from {nfiles_dict[0]} nonjokers and {nfiles_dict[1]} joker source images split train/valid/test {SPLIT}')
+        nsegments=nfiles//NUM_FRAMES_PER_SEGMENT
+        segs=list(range(nsegments))
+        random.shuffle(segs)
+        log.info(f'{cls} has {nfiles} samples that are split to {nsegments} sequences of {NUM_FRAMES_PER_SEGMENT} frames/seq')
+        split_start=0
+        for split_name, split_frac in zip(splits.keys(),splits.values()):
+            dest_folder_name = os.path.join(TRAIN_DATA_FOLDER, split_name, cls)
+            log.info(f'making {dest_folder_name}/ folder for shuffled segments of {NUM_FRAMES_PER_SEGMENT} frames per segment for {split_frac*100:.1f}% {split_name} split of {cls} ')
+            Path(dest_folder_name).mkdir(parents=True, exist_ok=True)
+            split_end=split_start+split_frac
+            seg_range=range(math.floor(split_start*nsegments),math.floor(split_end*nsegments))
+            file_nums=[]
+            for s in seg_range:
+                nums=list(range(segs[s]*NUM_FRAMES_PER_SEGMENT,(segs[s]+1)*NUM_FRAMES_PER_SEGMENT))
+                file_nums.extend(nums)
+            files=[ls[i] for i in file_nums]
+            for file_name in tqdm(files, desc=f'{cls}/{split_name}'):
+                source_file_path = os.path.join(SRC_DATA_FOLDER,cls, file_name)
+                dest_file_path = os.path.join(dest_folder_name, file_name)
+                # print(f'copying {source_file_path} -> {dest_file_path}')
+                copyfile(source_file_path, dest_file_path)
+            split_start=split_end
+    log.info(f'done generating training set from')
 
 def riffle_test():
     """ Runs test on folder of video sequence and pause at detected jokers
     """
+
+    class GetOutOfLoop(Exception):
+        pass
+
     log.info('evaluating riffle')
     log.info(f'Tensorflow version {tf.version.VERSION}')
     interpreter, input_details, output_details=load_tflite_model()
     folder=SRC_DATA_FOLDER
-    root = Tk()
-    root.withdraw()
     os.chdir(folder)
-    folder = filedialog.askdirectory()
-    if len(folder)==0:
-        log.info('aborted')
-        quit(1)
-    os.chdir(folder)
-    ls=os.listdir()
-    ls=sorted(ls)
-    first=True
     while True:
-        if first:
-            start=random.randint(0,len(ls))
-            first=False
-        else:
-            start=0
-        for image_file_path in ls[start:]:
-            img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
-            input_arr = tf.keras.preprocessing.image.img_to_array(img)
-            img =np.array(input_arr)
-            dec, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
-            if dec==1:
-                cv2.putText(img,'Joker',(10,30),cv2.FONT_HERSHEY_PLAIN,2,(255,255,255),2)
-                print('\a') # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
-            cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-            cv2.imshow('frame', np.array(img))
-            cv2.resizeWindow('frame', 800, 400)
+        root = Tk()
+        root.withdraw()
+        folder = filedialog.askdirectory()
+        if len(folder)==0:
+            log.info('aborted')
+            quit(1)
+        os.chdir(folder)
+        ls=os.listdir()
+        ls=sorted(ls)
+        first=True
+        try:
+            while True:
+                if first:
+                    start=random.randint(0,len(ls))
+                    first=False
+                else:
+                    start=0
+                for image_file_path in ls[start:]:
+                    if os.path.isdir(image_file_path):
+                        continue
+                    img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
+                    input_arr = tf.keras.preprocessing.image.img_to_array(img)
+                    img =np.array(input_arr)
+                    dec, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
+                    if dec==1:
+                        cv2.putText(img,'Joker',(10,30),cv2.FONT_HERSHEY_PLAIN,2,(255,255,255),2)
+                        print('\a') # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
+                    cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+                    cv2.imshow('frame', np.array(img))
+                    cv2.resizeWindow('frame', 800, 400)
 
-            if dec == 0:
-                k = cv2.waitKey(15) & 0xff
-            else:
-                k = cv2.waitKey(2000) & 0xff
-            if k == 27 or k == ord('q') or k == ord('x'):
-                cv2.destroyAllWindows()
-                quit()
+                    if dec == 0:
+                        k = cv2.waitKey(15) & 0xff
+                    else:
+                        k = cv2.waitKey(2000) & 0xff
+                    if k == 27 or k == ord('q') or k == ord('x'):
+                        cv2.destroyAllWindows()
+                        quit()
+                    elif k!=255:
+                        os.chdir('..')
+                        raise GetOutOfLoop # choose new folder
+        except GetOutOfLoop:
+            continue
 
 
 def test_random_samples():
@@ -313,16 +328,21 @@ def load_tflite_model():
 
 
 def get_flops():
+    log.info('measuring Op/frame for CNN')
     from flopco_keras import FlopCoKeras
     import tensorflow as tf
 
-    model = load_latest_model() #tf.keras.applications.ResNet101()
+    model = create_model() # load_latest_model() #tf.keras.applications.ResNet101()
     flopco=FlopCoKeras(model)
     flopco.get_stats()
 
+    # log.info(f'flop counter: {str(flopco)}')
     log.info(f"Op/frame: {eng(flopco.total_flops)}")
     log.info(f"MAC/frame: {eng(flopco.total_macs)}")
-    log.info(f"Relative Op per layer: {flopco.relative_flops}")
+    s='Fractional Op per layer: '
+    for f in flopco.relative_flops:
+        s=s+f' {f*100:.2f}%'
+    log.info(f'Fractional Op per layer: {s}')
 
     return flopco
 
@@ -357,12 +377,12 @@ def create_model():
     model = Sequential()
 
     # model.add(Input(shape=(None,IMSIZE,IMSIZE,3),dtype='float32', name='input'))
-    model.add(Conv2D(filters=64, kernel_size=(11,11),
+    model.add(Conv2D(filters=128, kernel_size=(5,5),
                      strides=(4,4), padding='valid',
                      input_shape=(IMSIZE,IMSIZE,1),
                      activation='relu', name='conv1'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(3,3),
+    model.add(MaxPooling2D(pool_size=(2,2),
                            strides=(2,2),
                            padding='valid'))
 
@@ -370,36 +390,39 @@ def create_model():
                      strides=(1,1), padding='same',
                      activation='relu', name='conv2'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(3,3),
+    model.add(MaxPooling2D(pool_size=(2,2),
                            strides=(2,2),
                            padding='valid'))
 
-    model.add(Conv2D(filters=128, kernel_size=(3,3),
+    model.add(Conv2D(filters=32, kernel_size=(5,5),
                      strides=(1,1), padding='same',
                      activation='relu', name='conv3'))
-    model.add(Conv2D(filters=128, kernel_size=(3,3),
+    model.add(Conv2D(filters=32, kernel_size=(5,5),
                      strides=(1,1), padding='same',
                      activation='relu', name='conv4'))
-    #model.add(Conv2D(filters=256, kernel_size=(3,3),
-    #                 strides=(1,1), padding='same',
-    #                 activation='relu', name='conv5'))
     model.add(MaxPooling2D(pool_size=(3,3),
-                           strides=(2,2), padding='valid'))
+                           strides=(3,3), padding='valid'))
 
     model.add(Flatten())
-    # model.add(Dense(4096, activation='relu', name='fc6'))
-    # model.add(Dropout(0.5))
 
-    # model.add(Dense(4096, activation='relu', name='fc7'))
-    # model.add(Dropout(0.5))
-
-    model.add(Dense(100, activation='relu', name='fc8'))
+    model.add(Dense(100, activation='relu', name='fc'))
     model.add(Dropout(0.5))
 
     # Output Layer
     model.add(Dense(2, activation='softmax', name='output'))
 
     return model
+
+def measure_latency():
+    log.info('measuring CNN latency in loop')
+    interpreter,input_details,output_details=load_tflite_model()
+    img=np.random.randint(0,255,(IMSIZE,IMSIZE,1))
+    N=100
+    for i in range(1,N):
+        with Timer('CNN latency') as timer:
+            classify_joker_img(img,interpreter,input_details,output_details)
+    timer.print_timing_info(log)
+
 
 
 def train(args=None):
@@ -466,17 +489,17 @@ def train(args=None):
                   metrics=['categorical_accuracy'])
     model.summary(print_fn=log.info)
 
-    train_batch_size = 32
+    train_batch_size = 128
     valid_batch_size = 64
     test_batch_size = 64
 
     log.info('making training generator')
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
-        # rotation_range=20,  # 图片随机转动的角度
-        # width_shift_range=0.3,  # 图片水平偏移的幅度
-        # height_shift_range=0.3,  # 图片竖直偏移的幅度
-        # zoom_range=0.2,
+        rotation_range=30,  # 图片随机转动的角度
+        width_shift_range=0.25,  # 图片水平偏移的幅度
+        height_shift_range=0.25,  # 图片竖直偏移的幅度
+        zoom_range=0.2,
         # horizontal_flip=False
     )  # 随机放大或缩小
 
@@ -527,7 +550,7 @@ def train(args=None):
     print_datagen_summary(valid_generator)
     print_datagen_summary(test_generator)
 
-    stop_early = EarlyStopping(monitor='val_loss', patience=6, verbose=1, mode='min')
+    stop_early = EarlyStopping(monitor='val_loss', patience=4, verbose=1, mode='min')
     save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
     # Profile from batches 10 to 15
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log',
@@ -549,7 +572,7 @@ def train(args=None):
                                 callbacks=[stop_early, save_checkpoint, tb_callback],
                                 # max_queue_size=capacity,
                                 # shuffle = True, # shuffle not valid for folder data generators
-                                workers=1,
+                                workers=4,
                                 class_weight=class_weight  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
                                 # it is better to avoid poking out finr until a joker is definitely detected
                                 )
@@ -618,6 +641,8 @@ def train(args=None):
     #                                  normalize=True)
     # disp.ax_.set_title('joker/nonjoker confusion matrix')
 
+    get_flops()
+    measure_latency()
     elapsed_time_min = (time.time() - start_time) / 60
     if args.train:
         log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {new_model_folder_name}.'
@@ -635,6 +660,7 @@ if __name__ == '__main__':
     parser.add_argument("--make_training_set", action='store_true', help="make training data from source images.")
     parser.add_argument("--test_random_samples", action='store_true', help="test random samples from test set.")
     parser.add_argument("--measure_flops", action='store_true', help="measures flops/frame of network.")
+    parser.add_argument("--measure_latency", action='store_true', help="measures CNN latency.")
 
     args = parser.parse_args()
     if args.train or args.test_accuracy:
@@ -647,6 +673,8 @@ if __name__ == '__main__':
         test_random_samples()
     elif args.riffle_test:
         riffle_test()
+    elif args.measure_latency:
+        measure_latency()
     elif args.measure_flops:
         stats=get_flops()
         log.info(f'total flops/frame={stats.total_flops}')

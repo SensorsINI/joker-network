@@ -155,6 +155,17 @@ class Timer:
         self.interval = self.end - self.start  # measured in seconds
         times[self.timer_name].append(self.interval)
 
+    def print_timing_info(self,stream=None):
+        a = np.array(times[self.timer_name])
+        timing_mean = np.mean(a) # todo use built in print method for timer
+        timing_std = np.std(a)
+        timing_median = np.median(a)
+        timing_min = np.min(a)
+        timing_max = np.max(a)
+        log.info('{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(self.timer_name, len(a),
+                                                                          eng(timing_mean), eng(timing_std),
+                                                                          eng(timing_median), eng(timing_min),
+                                                                          eng(timing_max)))
 
 def print_timing_info():
     print('== Timing statistics ==')
@@ -165,7 +176,7 @@ def print_timing_info():
         timing_median = np.median(a)
         timing_min = np.min(a)
         timing_max = np.max(a)
-        print('{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(k, len(a),
+        log.info('\n{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(k, len(a),
                                                                           eng(timing_mean), eng(timing_std),
                                                                           eng(timing_median), eng(timing_min),
                                                                           eng(timing_max)))

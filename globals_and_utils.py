@@ -88,11 +88,11 @@ def yes_or_no(question, default='y', timeout=None):
         except TimeoutError:
             log.warning(f'timeout expired, returning default={default} answer')
             reply=''
-        if len(reply)==0:
+        if len(reply)==0 or reply=='':
             return True if default=='y' else False
-        elif reply[0] == 'y':
+        elif reply[0].lower() == 'y':
             return True
-        if reply[0] == 'n':
+        if reply[0].lower() == 'n':
             return False
 
 class CustomFormatter(logging.Formatter):
@@ -120,12 +120,11 @@ class CustomFormatter(logging.Formatter):
 
 
 def my_logger(name):
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    # logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     logger = logging.getLogger(name)
     logger.setLevel(LOGGING_LEVEL)
-    # create console handler with a higher log level
+    # create console handler
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
     ch.setFormatter(CustomFormatter())
     logger.addHandler(ch)
     return logger

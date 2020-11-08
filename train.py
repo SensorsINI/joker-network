@@ -18,7 +18,7 @@ from tkinter import *
 
 import tensorflow as tf
 # from alessandro: use keras from tensorflow, not from keras directly
-from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense, Dropout, Activation, Flatten
 from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
@@ -35,11 +35,10 @@ import datetime
 
 INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest saved model
 
-log= my_logger(__name__)
-log.setLevel(LOGGING_LEVEL)
 import logging
 import sys
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+log= my_logger(__name__)
+# logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 def rename_images():
     """ Cleans up a folder filled with images (png and jpg) so that the images are numbered consecutively. Useful after using mv --backup=t to add new images to a folder
@@ -83,9 +82,10 @@ def rename_images():
 def make_training_set():
     """ Generates the train/ valid/ and test/ folders in TRAIN_DATA_FOLDER  using the images in SRC_DATA_FOLDER and the split defined by SPLIT variable
     """
-    NUM_FRAMES_PER_SEGMENT=300 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_PER_SEGMENT=100 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_GAP_BETWEEN_SEGMENTS=20 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
 
-    log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images')
+    log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images with gaps of {NUM_FRAMES_GAP_BETWEEN_SEGMENTS} gaps between segments')
     if not os.path.isdir(TRAIN_DATA_FOLDER):
         log.warning(f'{TRAIN_DATA_FOLDER} does not exist, creating it')
         Path(TRAIN_DATA_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -101,7 +101,7 @@ def make_training_set():
     for cls in ['class1', 'class2']:
         ls = os.listdir(cls)
         nfiles = len(ls) - 1
-        nsegments=nfiles//NUM_FRAMES_PER_SEGMENT
+        nsegments=nfiles//(NUM_FRAMES_PER_SEGMENT+NUM_FRAMES_GAP_BETWEEN_SEGMENTS)
         segs=list(range(nsegments))
         random.shuffle(segs)
         log.info(f'{cls} has {nfiles} samples that are split to {nsegments} sequences of {NUM_FRAMES_PER_SEGMENT} frames/seq')
@@ -114,7 +114,9 @@ def make_training_set():
             seg_range=range(math.floor(split_start*nsegments),math.floor(split_end*nsegments))
             file_nums=[]
             for s in seg_range:
-                nums=list(range(segs[s]*NUM_FRAMES_PER_SEGMENT,(segs[s]+1)*NUM_FRAMES_PER_SEGMENT))
+                start=segs[s]*(NUM_FRAMES_PER_SEGMENT+NUM_FRAMES_GAP_BETWEEN_SEGMENTS)
+                end=start+NUM_FRAMES_PER_SEGMENT
+                nums=list(range(start,end))
                 file_nums.extend(nums)
             files=[ls[i] for i in file_nums]
             for file_name in tqdm(files, desc=f'{cls}/{split_name}'):
@@ -372,46 +374,56 @@ def get_flops():
     #
     #         return flops.total_float_ops
 
-# AlexNet
 def create_model():
+    """ Creates the CNN model for joker detection
+    """
     model = Sequential()
 
     # model.add(Input(shape=(None,IMSIZE,IMSIZE,3),dtype='float32', name='input'))
-    model.add(Conv2D(filters=128, kernel_size=(5,5),
-                     strides=(4,4), padding='valid',
-                     input_shape=(IMSIZE,IMSIZE,1),
+    model.add(Conv2D(filters=64, kernel_size=(11, 11),
+                     strides=(4, 4), padding='valid',
+                     input_shape=(IMSIZE, IMSIZE, 1),
                      activation='relu', name='conv1'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(2,2),
-                           strides=(2,2),
+    model.add(MaxPooling2D(pool_size=(3, 3),
+                           strides=(2, 2),
                            padding='valid'))
 
-    model.add(Conv2D(filters=64, kernel_size=(5,5),
-                     strides=(1,1), padding='same',
+    model.add(Conv2D(filters=64, kernel_size=(5, 5),
+                     strides=(1, 1), padding='same',
                      activation='relu', name='conv2'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(2,2),
-                           strides=(2,2),
+    model.add(MaxPooling2D(pool_size=(3, 3),
+                           strides=(2, 2),
                            padding='valid'))
 
-    model.add(Conv2D(filters=32, kernel_size=(5,5),
-                     strides=(1,1), padding='same',
+    model.add(Conv2D(filters=128, kernel_size=(3, 3),
+                     strides=(1, 1), padding='same',
                      activation='relu', name='conv3'))
-    model.add(Conv2D(filters=32, kernel_size=(5,5),
-                     strides=(1,1), padding='same',
+    model.add(Conv2D(filters=128, kernel_size=(3, 3),
+                     strides=(1, 1), padding='same',
                      activation='relu', name='conv4'))
-    model.add(MaxPooling2D(pool_size=(3,3),
-                           strides=(3,3), padding='valid'))
+    # model.add(Conv2D(filters=256, kernel_size=(3,3),
+    #                 strides=(1,1), padding='same',
+    #                 activation='relu', name='conv5'))
+    model.add(MaxPooling2D(pool_size=(3, 3),
+                           strides=(2, 2), padding='valid'))
 
     model.add(Flatten())
+    # model.add(Dense(4096, activation='relu', name='fc6'))
+    # model.add(Dropout(0.5))
 
-    model.add(Dense(100, activation='relu', name='fc'))
+    # model.add(Dense(4096, activation='relu', name='fc7'))
+    # model.add(Dropout(0.5))
+
+    model.add(Dense(100, activation='relu', name='fc8'))
     model.add(Dropout(0.5))
 
     # Output Layer
     model.add(Dense(2, activation='softmax', name='output'))
 
     return model
+
 
 def measure_latency():
     log.info('measuring CNN latency in loop')
@@ -423,6 +435,14 @@ def measure_latency():
             classify_joker_img(img,interpreter,input_details,output_details)
     timer.print_timing_info(log)
 
+
+class PlotHistoryCallback(History):
+
+    def on_epoch_end(self, epoch, logs=None):
+        super().on_epoch_end(epoch,logs)
+        keys = list(logs.keys())
+        log.info("End epoch {} of training; got log keys: {}".format(epoch, keys))
+        plot_history(self.model.history, 'history')
 
 
 def train(args=None):
@@ -493,14 +513,15 @@ def train(args=None):
     valid_batch_size = 64
     test_batch_size = 64
 
-    log.info('making training generator')
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
-        rotation_range=30,  # 图片随机转动的角度
+        rotation_range=20,# 图片随机转动的角度
         width_shift_range=0.25,  # 图片水平偏移的幅度
         height_shift_range=0.25,  # 图片竖直偏移的幅度
-        zoom_range=0.2,
-        # horizontal_flip=False
+        fill_mode='constant',
+        cval=0, # fill edge pixels with black
+        # zoom_range=0.2,
+        # horizontal_flip=False,
     )  # 随机放大或缩小
 
     log.info('making training generator')
@@ -510,7 +531,9 @@ def train(args=None):
         batch_size=train_batch_size,
         class_mode='categorical',
         color_mode='grayscale',
-        shuffle=True)
+        # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
+        shuffle=True,
+    )
 
     log.info('making validation generator')
     valid_generator = train_datagen.flow_from_directory(
@@ -519,7 +542,8 @@ def train(args=None):
         batch_size=valid_batch_size,
         class_mode='categorical',
         color_mode='grayscale',
-        shuffle=True)
+        shuffle=True,
+    )
 
     log.info('making test generator')
     test_datagen = ImageDataGenerator(rescale=1. / 255)
@@ -530,8 +554,6 @@ def train(args=None):
         class_mode='categorical',
         color_mode='grayscale',
         shuffle=False,
-        # save_to_dir='test_gen_samples',
-        # save_prefix=''
     )  # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
 
     # Path('test_gen_samples').mkdir(parents=True, exist_ok=True)
@@ -550,59 +572,42 @@ def train(args=None):
     print_datagen_summary(valid_generator)
     print_datagen_summary(test_generator)
 
-    stop_early = EarlyStopping(monitor='val_loss', patience=4, verbose=1, mode='min')
+    stop_early = EarlyStopping(monitor='val_loss', patience=6, verbose=1, mode='min')
     save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
     # Profile from batches 10 to 15
-    tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log',
-                                                 profile_batch='10, 15')
+    # tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log', profile_batch='10, 15')
+    plot_callback=PlotHistoryCallback()
+
 
     if args.train:
         log.info('starting training')
         epochs=300
 
-        class_weight = {0: .9, 1: .1}
+        class_weight = {0: .7, 1: .3}
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
+
+
         try:
             history = model.fit(train_generator,  # todo back to train generator
                                 # steps_per_epoch=150,
                                 epochs=epochs, verbose=1,
                                 validation_data=valid_generator,
                                 # validation_steps=25,
-                                callbacks=[stop_early, save_checkpoint, tb_callback],
-                                # max_queue_size=capacity,
+                                callbacks=[stop_early, save_checkpoint, plot_callback],
+                                max_queue_size=20,
+                                use_multiprocessing=False,
                                 # shuffle = True, # shuffle not valid for folder data generators
-                                workers=4,
+                                workers=8,
                                 class_weight=class_weight  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
                                 # it is better to avoid poking out finr until a joker is definitely detected
                                 )
-            if history is not None:
-                try:
-                    training_history_filename = os.path.join(LOG_DIR, 'training_history'+'-'+start_timestr+'.npy')
-                    np.save(training_history_filename, history.history)
-                    log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
-                    log.info(f'history.history.keys()={history.history.keys()}')
+            plot_history(history, start_timestr)
+            training_history_filename = os.path.join(LOG_DIR, 'training_history' + '-' + start_timestr + '.npy')
+            np.save(training_history_filename, history.history)
+            log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
+            log.info(f'history.history.keys()={history.history.keys()}')
 
-                    # summarize history for accuracy
-                    plt.plot(history.history['categorical_accuracy'])
-                    plt.plot(history.history['val_categorical_accuracy'])
-                    plt.title('model accuracy')
-                    plt.ylabel('accuracy')
-                    plt.xlabel('epoch')
-                    plt.legend(['train', 'validate'], loc='upper left')
-                    plt.savefig(os.path.join(LOG_DIR,'accuracy'+'-'+start_timestr+'.png'))
-                    plt.show()
-                    # summarize history for loss
-                    plt.plot(history.history['loss'])
-                    plt.plot(history.history['val_loss'])
-                    plt.title('model loss')
-                    plt.ylabel('loss')
-                    plt.xlabel('epoch')
-                    plt.legend(['train', 'validate'], loc='upper left')
-                    plt.savefig(os.path.join(LOG_DIR,'loss'+'-'+start_timestr+'.png'))
-                    plt.show()
-                except KeyError as k:
-                    log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
         except KeyboardInterrupt:
             log.warning('keyboard interrupt, saving model and testing')
 
@@ -647,6 +652,32 @@ def train(args=None):
     if args.train:
         log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {new_model_folder_name}.'
              f'\nSee {LOG_FILE} for logging output for this run.')
+
+
+def plot_history(history, start_timestr):
+    if history is not None:
+        try:
+
+            # summarize history for accuracy
+            plt.plot(history.history['categorical_accuracy'])
+            plt.plot(history.history['val_categorical_accuracy'])
+            plt.title('model accuracy')
+            plt.ylabel('accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'validate'], loc='upper left')
+            plt.savefig(os.path.join(LOG_DIR, 'accuracy' + '-' + start_timestr + '.png'))
+            plt.show()
+            # summarize history for loss
+            plt.plot(history.history['loss'])
+            plt.plot(history.history['val_loss'])
+            plt.title('model loss')
+            plt.ylabel('loss')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'validate'], loc='upper left')
+            plt.savefig(os.path.join(LOG_DIR, 'loss' + '-' + start_timestr + '.png'))
+            plt.show()
+        except KeyError as k:
+            log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
 
 
 args=None # if run as module

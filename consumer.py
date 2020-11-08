@@ -132,17 +132,17 @@ if __name__ == '__main__':
                 # img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                dec, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
+                is_joker, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
             if latency_test:
 
                 if time.time()-last_latency_test_time>2:
-                    dec=1
+                    is_joker=True
                     last_latency_test_time=time.time()
                 else:
-                    dec=0
+                    is_joker=False
                     arduino_serial_port.write(b'f')
 
-            if dec==1: # joker
+            if is_joker: # joker
                 arduino_serial_port.write(b'1')
                 finger_out_time=time.time()
                 state=STATE_FINGER_OUT
@@ -155,7 +155,7 @@ if __name__ == '__main__':
                 pass
 
             save_img= (255 *img.squeeze()).astype('uint8')
-            if dec==1: # joker
+            if is_joker: # joker
                 # find next name that is not taken yet
                 next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img)
                 show_frame(save_img, 'joker', cv2_resized)

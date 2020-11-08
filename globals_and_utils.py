@@ -42,6 +42,7 @@ MODEL_DIR='models' # where models stored
 JOKER_NET_BASE_NAME='joker_net' # base name
 TFLITE_FILE_NAME=JOKER_NET_BASE_NAME+'.tflite' # tflite model is stored in same folder as full-blown TF2 model
 CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
+JOKER_DETECT_THRESHOLD_SCORE=.99 # minimum 'probability' threshold on joker output of CNN to trigger detection
 
 import signal
 def alarm_handler(signum, frame):

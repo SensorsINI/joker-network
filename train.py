@@ -82,10 +82,10 @@ def rename_images():
 def make_training_set():
     """ Generates the train/ valid/ and test/ folders in TRAIN_DATA_FOLDER  using the images in SRC_DATA_FOLDER and the split defined by SPLIT variable
     """
-    NUM_FRAMES_PER_SEGMENT=100 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
-    NUM_FRAMES_GAP_BETWEEN_SEGMENTS=20 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_PER_SEGMENT=50 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_GAP_BETWEEN_SEGMENTS=15 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
 
-    log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images with gaps of {NUM_FRAMES_GAP_BETWEEN_SEGMENTS} gaps between segments')
+    log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images with gaps of {NUM_FRAMES_GAP_BETWEEN_SEGMENTS} frames between segments')
     if not os.path.isdir(TRAIN_DATA_FOLDER):
         log.warning(f'{TRAIN_DATA_FOLDER} does not exist, creating it')
         Path(TRAIN_DATA_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -97,13 +97,14 @@ def make_training_set():
 
     log.info(f'Using source images from {SRC_DATA_FOLDER}')
     os.chdir(SRC_DATA_FOLDER)
-    splits={'train':.8, 'valid':.1, 'test':.1}
+    splits={'train':.7, 'valid':.2, 'test':.1}
     for cls in ['class1', 'class2']:
         ls = os.listdir(cls)
+        ls=sorted(ls) # sort first to get in number order
         nfiles = len(ls) - 1
         nsegments=nfiles//(NUM_FRAMES_PER_SEGMENT+NUM_FRAMES_GAP_BETWEEN_SEGMENTS)
         segs=list(range(nsegments))
-        random.shuffle(segs)
+        random.shuffle(segs) # shuffle segments of batches of images
         log.info(f'{cls} has {nfiles} samples that are split to {nsegments} sequences of {NUM_FRAMES_PER_SEGMENT} frames/seq')
         split_start=0
         for split_name, split_frac in zip(splits.keys(),splits.values()):
@@ -113,11 +114,18 @@ def make_training_set():
             split_end=split_start+split_frac
             seg_range=range(math.floor(split_start*nsegments),math.floor(split_end*nsegments))
             file_nums=[]
+            print('taking segments ',end='')
+            nperline=20
+            line=0
             for s in seg_range:
+                print(f'{segs[s]} ',end='')
+                line+=1
+                if line%nperline==0: print('')
                 start=segs[s]*(NUM_FRAMES_PER_SEGMENT+NUM_FRAMES_GAP_BETWEEN_SEGMENTS)
                 end=start+NUM_FRAMES_PER_SEGMENT
                 nums=list(range(start,end))
                 file_nums.extend(nums)
+            print('')
             files=[ls[i] for i in file_nums]
             for file_name in tqdm(files, desc=f'{cls}/{split_name}'):
                 source_file_path = os.path.join(SRC_DATA_FOLDER,cls, file_name)
@@ -163,15 +171,15 @@ def riffle_test():
                     img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
                     input_arr = tf.keras.preprocessing.image.img_to_array(img)
                     img =np.array(input_arr)
-                    dec, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
-                    if dec==1:
-                        cv2.putText(img,'Joker',(10,30),cv2.FONT_HERSHEY_PLAIN,2,(255,255,255),2)
+                    is_joker, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
+                    if is_joker:
+                        cv2.putText(img,f'Joker {joker_prob*100:.1f}%',(10,30),cv2.FONT_HERSHEY_PLAIN,2,(255,255,255),2)
                         print('\a') # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                     cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                     cv2.imshow('frame', np.array(img))
                     cv2.resizeWindow('frame', 800, 400)
 
-                    if dec == 0:
+                    if not is_joker:
                         k = cv2.waitKey(15) & 0xff
                     else:
                         k = cv2.waitKey(2000) & 0xff
@@ -273,14 +281,14 @@ def classify_joker_img(img: np.array, interpreter, input_details, output_details
     :param input_details: the input details of interpreter
     :param output_details: the output details of interpreter
 
-    :returns: decision (0 or 1), joker_probability (0-1), prediction[2]=[nonjoker, joker]
+    :returns: is_joker (True/False), joker_probability (0-1), prediction[2]=[nonjoker, joker]
     """
     interpreter.set_tensor(input_details[0]['index'], (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32))
     interpreter.invoke()
-    pred = interpreter.get_tensor(output_details[0]['index'])
-    dec = np.argmax(pred[0])
-    joker_prob = pred[0][1]
-    return dec, joker_prob, pred
+    pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
+    joker_prob = pred_vector[1]
+    is_joker = pred_vector[1]>pred_vector[0] and joker_prob>JOKER_DETECT_THRESHOLD_SCORE
+    return is_joker, joker_prob, pred_vector
 
 
 def load_latest_model():
@@ -464,7 +472,7 @@ def train(args=None):
     log.info(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
 
     num_classes = 2
-    checkpoint_filename_path = os.path.join(MODEL_DIR, 'models/joker_net_checkpoint.hdf5')
+    checkpoint_filename_path = os.path.join(MODEL_DIR, 'joker_net_checkpoint.hdf5')
 
     model = create_model()
     latest_existing_model_folder=None

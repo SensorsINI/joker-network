@@ -3,6 +3,7 @@ consumer of DVS frames for classification of joker/nonjoker by consumer processs
 Authors: Tobi Delbruck, Shasha Guo, Yuhaung Hu, Min Liu, Oct 2020
 """
 import argparse
+import copy
 import glob
 import pickle
 import cv2
@@ -124,7 +125,7 @@ if __name__ == '__main__':
                     # tries+=1
 
             with Timer('unpickle and normalize/reshape'):
-                (frame_number,img) = pickle.loads(receive_data)
+                (frame_number,timestamp, img) = pickle.loads(receive_data)
                 dropped_frames=frame_number-last_frame_number-1
                 if dropped_frames>0:
                     log.warning(f'Dropped {dropped_frames} frames from producer')
@@ -154,7 +155,12 @@ if __name__ == '__main__':
             else:
                 pass
 
-            save_img= (255 *img.squeeze()).astype('uint8')
+            # save time since frame sent from producer
+            dt=time.time()-timestamp
+            with Timer('producer->consumer inference delay',delay=dt, show_hist=True):
+                pass
+
+            save_img= (img.squeeze()).astype('uint8')
             if is_joker: # joker
                 # find next name that is not taken yet
                 next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img)
@@ -167,7 +173,7 @@ if __name__ == '__main__':
                 saved_non_jokers.clear()
             else:
                 if random.random()<.03: # append random previous images to not just get previous almost jokers
-                    saved_non_jokers.append(save_img)
+                    saved_non_jokers.append(copy.deepcopy(save_img)) # we need to copy the frame otherwise the reference is overwritten by next frame and we just get the same frame over and over
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 

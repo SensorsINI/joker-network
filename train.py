@@ -15,7 +15,7 @@ from tkinter import *
 # import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
+import PIL
 import tensorflow as tf
 # from alessandro: use keras from tensorflow, not from keras directly
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
@@ -62,11 +62,11 @@ def rename_images():
     log.info('renaming files to tmp folder')
     for f in tqdm(ls):
         if 'png' in f:
-            fn = f'tmp/{i:05d}.png'
+            fn = f'tmp/{i:06d}.png'
             i = i + 1
             os.rename(f, fn)
         elif 'jpg' in f:
-            fn = f'tmp/{i:05d}.jpg'
+            fn = f'tmp/{i:06d}.jpg'
             i = i + 1
             os.rename(f, fn)
 
@@ -82,8 +82,8 @@ def rename_images():
 def make_training_set():
     """ Generates the train/ valid/ and test/ folders in TRAIN_DATA_FOLDER  using the images in SRC_DATA_FOLDER and the split defined by SPLIT variable
     """
-    NUM_FRAMES_PER_SEGMENT=50 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
-    NUM_FRAMES_GAP_BETWEEN_SEGMENTS=15 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_PER_SEGMENT=200 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_GAP_BETWEEN_SEGMENTS=20 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
 
     log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images with gaps of {NUM_FRAMES_GAP_BETWEEN_SEGMENTS} frames between segments')
     if not os.path.isdir(TRAIN_DATA_FOLDER):
@@ -168,8 +168,12 @@ def riffle_test():
                 for image_file_path in ls[start:]:
                     if os.path.isdir(image_file_path):
                         continue
-                    img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
+                    try:
+                        img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
+                    except PIL.UnidentifiedImageError:
+                        raise GetOutOfLoop
                     input_arr = tf.keras.preprocessing.image.img_to_array(img)
+                    input_arr=tf.keras.preprocessing.image.smart_resize(input_arr,(IMSIZE,IMSIZE))
                     img =np.array(input_arr)
                     is_joker, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
                     if is_joker:
@@ -517,18 +521,18 @@ def train(args=None):
                   metrics=['categorical_accuracy'])
     model.summary(print_fn=log.info)
 
-    train_batch_size = 128
+    train_batch_size = 64
     valid_batch_size = 64
     test_batch_size = 64
 
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
-        rotation_range=20,# 图片随机转动的角度
+        rotation_range=30,# 图片随机转动的角度
         width_shift_range=0.25,  # 图片水平偏移的幅度
         height_shift_range=0.25,  # 图片竖直偏移的幅度
         fill_mode='constant',
         cval=0, # fill edge pixels with black
-        # zoom_range=0.2,
+        zoom_range=0.2,
         # horizontal_flip=False,
     )  # 随机放大或缩小
 
@@ -544,13 +548,14 @@ def train(args=None):
     )
 
     log.info('making validation generator')
+
     valid_generator = train_datagen.flow_from_directory(
         TRAIN_DATA_FOLDER + '/valid/',
         target_size=(IMSIZE, IMSIZE),
         batch_size=valid_batch_size,
         class_mode='categorical',
         color_mode='grayscale',
-        shuffle=True,
+        shuffle=True, # irrelevant for validtion
     )
 
     log.info('making test generator')
@@ -580,7 +585,7 @@ def train(args=None):
     print_datagen_summary(valid_generator)
     print_datagen_summary(test_generator)
 
-    stop_early = EarlyStopping(monitor='val_loss', patience=6, verbose=1, mode='min')
+    stop_early = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
     save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
     # Profile from batches 10 to 15
     # tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log', profile_batch='10, 15')
@@ -591,7 +596,7 @@ def train(args=None):
         log.info('starting training')
         epochs=300
 
-        class_weight = {0: .7, 1: .3}
+        class_weight = {0: .5, 1: .5} # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
 
@@ -608,7 +613,7 @@ def train(args=None):
                                 # shuffle = True, # shuffle not valid for folder data generators
                                 workers=8,
                                 class_weight=class_weight  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
-                                # it is better to avoid poking out finr until a joker is definitely detected
+                                # it is better to avoid poking out finger until a joker is definitely detected
                                 )
             plot_history(history, start_timestr)
             training_history_filename = os.path.join(LOG_DIR, 'training_history' + '-' + start_timestr + '.npy')

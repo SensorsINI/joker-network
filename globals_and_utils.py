@@ -29,8 +29,8 @@ MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce lo
 FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
 
 DATA_FOLDER = home = '/home/tobi/Downloads/trixsyDataset/data' #'data'  # new samples stored here
-NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 6
-JOKERS_FOLDER = DATA_FOLDER + '/jokers'
+NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 3 # when joker detected by consumer, this many random previous nonjoker frames are also saved
+JOKERS_FOLDER = DATA_FOLDER + '/jokers'  # where samples are saved during runtime of consumer
 NON_JOKERS_FOLDER = DATA_FOLDER + '/nonjokers'
 SERIAL_PORT = "/dev/ttyUSB0"  # port to talk to arduino finger controller
 
@@ -42,7 +42,7 @@ MODEL_DIR='models' # where models stored
 JOKER_NET_BASE_NAME='joker_net' # base name
 TFLITE_FILE_NAME=JOKER_NET_BASE_NAME+'.tflite' # tflite model is stored in same folder as full-blown TF2 model
 CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
-JOKER_DETECT_THRESHOLD_SCORE=.99 # minimum 'probability' threshold on joker output of CNN to trigger detection
+JOKER_DETECT_THRESHOLD_SCORE=.95 # minimum 'probability' threshold on joker output of CNN to trigger detection
 
 import signal
 def alarm_handler(signum, frame):
@@ -136,10 +136,20 @@ log=my_logger(__name__)
 timers = {}
 times = {}
 class Timer:
-    def __init__(self, timer_name='', show_hist=False, numpy_file=None):
+    def __init__(self, timer_name='', delay=None, show_hist=False, numpy_file=None):
+        """ Make a Timer() in a _with_ statement for a block of code.
+        The timer is started when the block is entered and stopped when exited.
+        The Timer _must_ be used in a with statement.
+
+        :param timer_name: the str by which this timer is repeatedly called and which it is named when summary is printed on exit
+        :param delay: set this to a value to simply accumulate this externally determined interval
+        :param show_hist: whether to plot a histogram with pyplot
+        :param numpy_file: optional numpy file path
+        """
         self.timer_name = timer_name
         self.show_hist = show_hist
         self.numpy_file = numpy_file
+        self.delay=delay
 
         if self.timer_name not in timers.keys():
             timers[self.timer_name] = self
@@ -147,16 +157,23 @@ class Timer:
             times[self.timer_name]=[]
 
     def __enter__(self):
-        self.start = time.time()
+        if self.delay is None:
+            self.start = time.time()
         return self
 
     def __exit__(self, *args):
-        self.end = time.time()
-        self.interval = self.end - self.start  # measured in seconds
+        if self.delay is None:
+            self.end = time.time()
+            self.interval = self.end - self.start  # measured in seconds
+        else:
+            self.interval=self.delay
         times[self.timer_name].append(self.interval)
 
     def print_timing_info(self,stream=None):
         a = np.array(times[self.timer_name])
+        if len(a)==0:
+            log.error(f'Timer {self.timer_name} has no statistics; was it used without a with statement?')
+            return
         timing_mean = np.mean(a) # todo use built in print method for timer
         timing_std = np.std(a)
         timing_median = np.median(a)
@@ -202,7 +219,7 @@ def write_next_image(dir:str, idx:int, img):
 
     :param dir: the folder
     :param idx: the current index number
-    :param img: the image to save
+    :param img: the image to save, which should be monochrome uint8 and which is saved as default png format
     :returns: the next index
     """
     while True:

@@ -80,7 +80,7 @@ def producer(record=None):
     assert (device.set_config(
         libcaer.CAER_HOST_CONFIG_PACKETS,
         libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
-        1000))
+        4000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
     assert (device.set_data_exchange_blocking())
 
     # setting bias after data stream started
@@ -139,10 +139,10 @@ def producer(record=None):
                 log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
 
                 with Timer('send frame'):
-                    data = pickle.dumps((frame_number, frame)) # send frame_number to allow determining dropped frames in consumer
+                    time_last_frame_sent=time.time()
+                    data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
                     frame_number+=1
                     client_socket.sendto(data, udp_address)
-                    time_last_frame_sent=time.time()
                 if recording_folder is not None:
                     recording_frame_number=write_next_image(recording_folder,recording_frame_number,frame)
                 if SHOW_DVS_OUTPUT:

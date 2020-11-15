@@ -110,6 +110,7 @@ def make_training_set():
     os.chdir(SRC_DATA_FOLDER)
     splits = {'train': .7, 'valid': .2, 'test': .1}
     last_frame_time = time.time()
+    splits={'train':.7, 'valid':.2, 'test':.1}
     for cls in ['class1', 'class2']:
         ls = os.listdir(cls)
         ls = sorted(ls)  # sort first to get in number order

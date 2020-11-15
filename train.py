@@ -15,10 +15,11 @@ from tkinter import *
 # import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
+import PIL
 import tensorflow as tf
 # from alessandro: use keras from tensorflow, not from keras directly
-from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
+from h5py.h5fd import LOG
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense, Dropout, Activation, Flatten
 from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
@@ -28,46 +29,50 @@ from sklearn.metrics import balanced_accuracy_score, confusion_matrix, plot_conf
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import random
-from engineering_notation import EngNumber  as eng # only from pip
+from engineering_notation import EngNumber  as eng  # only from pip
+import tensorflow.python.keras
+from classification_models.keras import Classifiers
 
 from globals_and_utils import *
 import datetime
 
-INITIALIZE_MODEL_FROM_LATEST=True # set True to initialize weights to latest saved model
+INITIALIZE_MODEL_FROM_LATEST = True  # set True to initialize weights to latest saved model
 
-log= my_logger(__name__)
-log.setLevel(LOGGING_LEVEL)
 import logging
 import sys
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+log = my_logger(__name__)
+
+
+# logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 def rename_images():
     """ Cleans up a folder filled with images (png and jpg) so that the images are numbered consecutively. Useful after using mv --backup=t to add new images to a folder
     :param folder: the folder name to clean up, relative to working directory
     """
-    folder=SRC_DATA_FOLDER
+    folder = SRC_DATA_FOLDER
     root = Tk()
     root.withdraw()
     os.chdir(folder)
     folder = filedialog.askdirectory()
-    if len(folder)==0:
+    if len(folder) == 0:
         log.info('aborted')
         quit(1)
     os.chdir(folder)
     if not os.path.exists('tmp'):
         os.mkdir('tmp')
-    ls = os.listdir() # glob.glob('./*')
-    ls=sorted(ls, key=lambda f: os.stat(f).st_mtime)
+    ls = os.listdir()  # glob.glob('./*')
+    ls = sorted(ls, key=lambda f: os.stat(f).st_mtime)
     log.info(f'folder {folder} has {len(ls)} files')
     i = 0
     log.info('renaming files to tmp folder')
     for f in tqdm(ls):
         if 'png' in f:
-            fn = f'tmp/{i:05d}.png'
+            fn = f'tmp/{i:06d}.png'
             i = i + 1
             os.rename(f, fn)
         elif 'jpg' in f:
-            fn = f'tmp/{i:05d}.jpg'
+            fn = f'tmp/{i:06d}.jpg'
             i = i + 1
             os.rename(f, fn)
 
@@ -83,9 +88,11 @@ def rename_images():
 def make_training_set():
     """ Generates the train/ valid/ and test/ folders in TRAIN_DATA_FOLDER  using the images in SRC_DATA_FOLDER and the split defined by SPLIT variable
     """
-    NUM_FRAMES_PER_SEGMENT=300 # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_PER_SEGMENT = 20  # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    NUM_FRAMES_GAP_BETWEEN_SEGMENTS = 5  # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
+    PREVIEW =yes_or_no('show samples from dataset?',default='n',timeout=30)
 
-    log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images')
+    log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images with gaps of {NUM_FRAMES_GAP_BETWEEN_SEGMENTS} frames between segments')
     if not os.path.isdir(TRAIN_DATA_FOLDER):
         log.warning(f'{TRAIN_DATA_FOLDER} does not exist, creating it')
         Path(TRAIN_DATA_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -93,39 +100,81 @@ def make_training_set():
         timestr = time.strftime("%Y%m%d-%H%M")
         backup_folder = f'{TRAIN_DATA_FOLDER}_{timestr}'
         log.warning(f'Renaming existing training folder {TRAIN_DATA_FOLDER} to {backup_folder}')
-        os.rename(TRAIN_DATA_FOLDER, backup_folder)
+        try:
+            os.rename(TRAIN_DATA_FOLDER, backup_folder)
+        except OSError as e:
+            log.error('target to rename existing training set folder exists already probably because you just ran this script')
+            quit(1)
 
     log.info(f'Using source images from {SRC_DATA_FOLDER}')
     os.chdir(SRC_DATA_FOLDER)
-    splits={'train':.8, 'valid':.1, 'test':.1}
+    splits = {'train': .7, 'valid': .2, 'test': .1}
+    last_frame_time = time.time()
     for cls in ['class1', 'class2']:
         ls = os.listdir(cls)
+        ls = sorted(ls)  # sort first to get in number order
         nfiles = len(ls) - 1
-        nsegments=nfiles//NUM_FRAMES_PER_SEGMENT
-        segs=list(range(nsegments))
-        random.shuffle(segs)
+        nsegments = nfiles // (NUM_FRAMES_PER_SEGMENT + NUM_FRAMES_GAP_BETWEEN_SEGMENTS)
+        segs = list(range(nsegments))
+        random.shuffle(segs)  # shuffle segments of batches of images
         log.info(f'{cls} has {nfiles} samples that are split to {nsegments} sequences of {NUM_FRAMES_PER_SEGMENT} frames/seq')
-        split_start=0
-        for split_name, split_frac in zip(splits.keys(),splits.values()):
+        split_start = 0
+        for split_name, split_frac in zip(splits.keys(), splits.values()):
             dest_folder_name = os.path.join(TRAIN_DATA_FOLDER, split_name, cls)
-            log.info(f'making {dest_folder_name}/ folder for shuffled segments of {NUM_FRAMES_PER_SEGMENT} frames per segment for {split_frac*100:.1f}% {split_name} split of {cls} ')
+            log.info(f'making {dest_folder_name}/ folder for shuffled segments of {NUM_FRAMES_PER_SEGMENT} frames per segment for {split_frac * 100:.1f}% {split_name} split of {cls} ')
             Path(dest_folder_name).mkdir(parents=True, exist_ok=True)
-            split_end=split_start+split_frac
-            seg_range=range(math.floor(split_start*nsegments),math.floor(split_end*nsegments))
-            file_nums=[]
+            split_end = split_start + split_frac
+            seg_range = range(math.floor(split_start * nsegments), math.floor(split_end * nsegments))
+            file_nums = []
+            print('taking segments ', end='')
+            nperline = 20
+            line = 0
             for s in seg_range:
-                nums=list(range(segs[s]*NUM_FRAMES_PER_SEGMENT,(segs[s]+1)*NUM_FRAMES_PER_SEGMENT))
+                print(f'{segs[s]} ', end='')
+                line += 1
+                if line % nperline == 0: print('')
+                start = segs[s] * (NUM_FRAMES_PER_SEGMENT + NUM_FRAMES_GAP_BETWEEN_SEGMENTS)
+                end = start + NUM_FRAMES_PER_SEGMENT
+                nums = list(range(start, end))
                 file_nums.extend(nums)
-            files=[ls[i] for i in file_nums]
+            print('')
+            files = [ls[i] for i in file_nums]
             for file_name in tqdm(files, desc=f'{cls}/{split_name}'):
-                source_file_path = os.path.join(SRC_DATA_FOLDER,cls, file_name)
+                source_file_path = os.path.join(SRC_DATA_FOLDER, cls, file_name)
+                if file_name.lower().endswith('jpg'):
+                    base = os.path.splitext(file_name)[0]
+                    file_name = base + '.png'
                 dest_file_path = os.path.join(dest_folder_name, file_name)
-                # print(f'copying {source_file_path} -> {dest_file_path}')
-                copyfile(source_file_path, dest_file_path)
-            split_start=split_end
+                try:
+                    img = tf.keras.preprocessing.image.load_img(source_file_path, color_mode='grayscale')
+                except PIL.UnidentifiedImageError:
+                    log.warning(f'{source_file_path} is not an image')
+                    continue
+                if img.size == (IMSIZE, IMSIZE) and img.format == 'PNG':
+                    # print(f'copying {source_file_path} -> {dest_file_path}')
+                    copyfile(source_file_path, dest_file_path)
+                    img_arr = None
+                else:
+                    # print(f'resizing and converting{source_file_path} -> {dest_file_path}')
+                    img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
+                    img_arr = tf.image.resize(img_arr, (IMSIZE, IMSIZE))  # note we do NOT want black borders and to preserve aspect ratio! We just want to squash to square
+                    img_arr = np.array(img_arr, dtype=np.uint8)
+                    try:
+                        tf.keras.preprocessing.image.save_img(dest_file_path, img_arr, file_format='png', scale=True)
+                    except Exception as e:
+                        log.warning(f'{dest_file_path} could not be saved: {e}')
+                        continue
+                if PREVIEW and time.time() - last_frame_time > 1:
+                    cv2.namedWindow(cls, cv2.WINDOW_NORMAL)
+                    cv2.imshow(cls, img_arr if img_arr is not None else tf.keras.preprocessing.image.img_to_array(img, dtype='uint8'))
+                    cv2.waitKey(1)
+                    last_frame_time = time.time()
+
+            split_start = split_end
     log.info(f'done generating training set from')
 
-def riffle_test():
+
+def riffle_test(args):
     """ Runs test on folder of video sequence and pause at detected jokers
     """
 
@@ -134,52 +183,102 @@ def riffle_test():
 
     log.info('evaluating riffle')
     log.info(f'Tensorflow version {tf.version.VERSION}')
-    interpreter, input_details, output_details=load_tflite_model()
-    folder=SRC_DATA_FOLDER
+
+    def print_help():
+        print('select folder (go inside it to select it)\n'
+              'q|x exits\n'
+              'space plays\n'
+              'right forward\n'
+              'left backwards\n'
+              'j moves to joker folder\n'
+              'n moves to nonjoker folder\n'
+              'enter selects new playback folder\n'
+              'h print help')
+
+    interpreter, input_details, output_details = load_tflite_model()
+    folder = SRC_DATA_FOLDER
     os.chdir(folder)
+    print_help()
+    start_time = time.time()
+    start_timestr = time.strftime("%Y%m%d-%H%M")
     while True:
         root = Tk()
         root.withdraw()
         folder = filedialog.askdirectory()
-        if len(folder)==0:
+        if len(folder) == 0:
             log.info('aborted')
             quit(1)
         os.chdir(folder)
-        ls=os.listdir()
-        ls=sorted(ls)
-        first=True
+        ls = os.listdir()
+        ls = sorted(ls)
+        first = True
+        mode = 'fwd'
+        idx = -1
+        Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+        jokers_list_file = open(os.path.join(LOG_DIR, f'joker-file-list-{start_timestr}.txt'), 'w')
+        nonjokers_list_file = open(os.path.join(LOG_DIR, f'nonjoker-file-list-{start_timestr}.txt'), 'w')
+
         try:
             while True:
-                if first:
-                    start=random.randint(0,len(ls))
-                    first=False
-                else:
-                    start=0
-                for image_file_path in ls[start:]:
-                    if os.path.isdir(image_file_path):
+                idx = idx + (1 if 'fwd' in mode else -1)
+                if idx >= len(ls):
+                    raise GetOutOfLoop
+                image_file_path = ls[idx]
+                if os.path.isdir(image_file_path):
+                    continue
+                try:
+                    try:
+                        img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
+                    except PIL.UnidentifiedImageError as e:
+                        log.warning(f'{e}: {image_file_path} is not an image?')
                         continue
-                    img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
-                    input_arr = tf.keras.preprocessing.image.img_to_array(img)
-                    img =np.array(input_arr)
-                    dec, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
-                    if dec==1:
-                        cv2.putText(img,'Joker',(10,30),cv2.FONT_HERSHEY_PLAIN,2,(255,255,255),2)
-                        print('\a') # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
+                    if img.format != 'PNG' and img.format != 'JPEG':
+                        log.warning(f'{image_file_path} is not PNG or JPEG, skipping?')
+                        continue
+                    img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
+                    img_arr = tf.image.resize(img_arr, (IMSIZE, IMSIZE))  # note we do NOT want black borders and to preserve aspect ratio! We just want to squash to square
+                    is_joker, joker_prob, pred = classify_joker_img(img_arr, interpreter, input_details, output_details)
+
+                    file = jokers_list_file if is_joker else nonjokers_list_file
+                    file.write(os.path.realpath(image_file_path) + '\n')
+                    img_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
+                    if is_joker:
+                        cv2.putText(img_arr, f'Joker {joker_prob * 100:.1f}%', (10, 30), cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
+                        print('\a')  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                     cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-                    cv2.imshow('frame', np.array(img))
+                    cv2.imshow('frame', img_arr)
                     cv2.resizeWindow('frame', 800, 400)
 
-                    if dec == 0:
-                        k = cv2.waitKey(15) & 0xff
+                    if not is_joker:
+                        k = cv2.waitKey(15)
                     else:
-                        k = cv2.waitKey(2000) & 0xff
-                    if k == 27 or k == ord('q') or k == ord('x'):
+                        k = cv2.waitKey(2000)  # wait longer for joker detected
+                    if k != -1: print(f'k={k}')
+                    k = k & 0xff
+                    if k == 27 or k == ord('q') or k == ord('x'):  # quit
                         cv2.destroyAllWindows()
+                        jokers_list_file.close()
+                        nonjokers_list_file.close()
+                        log.info(f'jokers saved as {os.path.realpath(jokers_list_file.name)} and nonjokers saved in {os.path.realpath(nonjokers_list_file.name)}')
                         quit()
-                    elif k!=255:
+                    elif k == ord('\n') or k == ord('\r'):  # enter/newline/cr
                         os.chdir('..')
-                        raise GetOutOfLoop # choose new folder
+                        raise GetOutOfLoop  # choose new folder
+                    elif k == ord('h'):
+                        print_help()
+                    elif k == ord('j'):
+                        log.info(f'moving {image_file_path} to {JOKERS_FOLDER}')
+                    elif k == ord('n'):
+                        log.info(f'moving {image_file_path} to {NON_JOKERS_FOLDER}')
+                    elif k == 255 or k == ord(' '):  # no key or space
+                        continue
+                except Exception as e:
+                    log.error(f'caught {e} for file {image_file_path}')
+                    raise GetOutOfLoop
         except GetOutOfLoop:
+            jokers_list_file.close()
+            nonjokers_list_file.close()
+            log.info(f'jokers saved as {os.path.realpath(jokers_list_file.name)} and nonjokers saved in {os.path.realpath(nonjokers_list_file.name)}')
             continue
 
 
@@ -209,20 +308,20 @@ def test_random_samples():
     import random
     ls = []
     class_folder_name = []
-    idx = [0,0]
+    idx = [0, 0]
     for c in [1, 2]:
         class_folder_name.append(test_folder + f'class{c}')
-        ls.append(os.listdir(class_folder_name[c-1]))
-        random.shuffle(ls[c-1])
+        ls.append(os.listdir(class_folder_name[c - 1]))
+        random.shuffle(ls[c - 1])
     while True:
         windows = []
         for c in [1, 2]:
             gt_class = 'nonjoker' if c == 1 else 'joker'
-            image_file_name=ls[c - 1][idx[c - 1]]
-            image_file_path = os.path.join(class_folder_name[c-1], image_file_name)
-            img = tf.keras.preprocessing.image.load_img(image_file_path,color_mode='grayscale')
+            image_file_name = ls[c - 1][idx[c - 1]]
+            image_file_path = os.path.join(class_folder_name[c - 1], image_file_name)
+            img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
             input_arr = tf.keras.preprocessing.image.img_to_array(img)
-            input_arr = (1./255)*np.array([input_arr])  # Convert single image to a batch.
+            input_arr = (1. / 255) * np.array([input_arr])  # Convert single image to a batch.
             pred = model.predict(input_arr)
 
             # img = cv2.imread(image_file_path, cv2.IMREAD_GRAYSCALE)
@@ -259,8 +358,8 @@ def test_random_samples():
                 cv2.destroyAllWindows()
                 quit()
             cv2.destroyWindow(win_name)
-            idx[c-1] += 1
-            if idx[c-1] >= len(ls[c-1]): idx[c-1] = 0
+            idx[c - 1] += 1
+            if idx[c - 1] >= len(ls[c - 1]): idx[c - 1] = 0
 
 
 def classify_joker_img(img: np.array, interpreter, input_details, output_details):
@@ -271,14 +370,14 @@ def classify_joker_img(img: np.array, interpreter, input_details, output_details
     :param input_details: the input details of interpreter
     :param output_details: the output details of interpreter
 
-    :returns: decision (0 or 1), joker_probability (0-1), prediction[2]=[nonjoker, joker]
+    :returns: is_joker (True/False), joker_probability (0-1), prediction[2]=[nonjoker, joker]
     """
     interpreter.set_tensor(input_details[0]['index'], (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32))
     interpreter.invoke()
-    pred = interpreter.get_tensor(output_details[0]['index'])
-    dec = np.argmax(pred[0])
-    joker_prob = pred[0][1]
-    return dec, joker_prob, pred
+    pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
+    joker_prob = pred_vector[1]
+    is_joker = pred_vector[1] > pred_vector[0] and joker_prob > JOKER_DETECT_THRESHOLD_SCORE
+    return is_joker, joker_prob, pred_vector
 
 
 def load_latest_model():
@@ -327,21 +426,20 @@ def load_tflite_model():
     return interpreter, input_details, output_details
 
 
-def get_flops():
+def measure_flops():
     log.info('measuring Op/frame for CNN')
     from flopco_keras import FlopCoKeras
     import tensorflow as tf
 
-    model = create_model() # load_latest_model() #tf.keras.applications.ResNet101()
-    flopco=FlopCoKeras(model)
-    flopco.get_stats()
+    model = create_model(ask_for_comment=False)  # load_latest_model() #tf.keras.applications.ResNet101()
+    flopco = FlopCoKeras(model)
 
     # log.info(f'flop counter: {str(flopco)}')
     log.info(f"Op/frame: {eng(flopco.total_flops)}")
     log.info(f"MAC/frame: {eng(flopco.total_macs)}")
-    s='Fractional Op per layer: '
+    s = 'Fractional Op per layer: '
     for f in flopco.relative_flops:
-        s=s+f' {f*100:.2f}%'
+        s = s + f' {f * 100:.2f}%'
     log.info(f'Fractional Op per layer: {s}')
 
     return flopco
@@ -372,40 +470,46 @@ def get_flops():
     #
     #         return flops.total_float_ops
 
-# AlexNet
-def create_model():
+
+def create_model_alexnet():
+    """ Creates the CNN model for joker detection
+    """
     model = Sequential()
 
     # model.add(Input(shape=(None,IMSIZE,IMSIZE,3),dtype='float32', name='input'))
-    model.add(Conv2D(filters=128, kernel_size=(5,5),
-                     strides=(4,4), padding='valid',
-                     input_shape=(IMSIZE,IMSIZE,1),
+    model.add(Conv2D(filters=128, kernel_size=(7, 7),
+                     strides=(3, 3), padding='valid',
+                     input_shape=(IMSIZE, IMSIZE, 1),
                      activation='relu', name='conv1'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(2,2),
-                           strides=(2,2),
+    model.add(MaxPooling2D(pool_size=(2, 2),
+                           strides=(2, 2),
                            padding='valid'))
 
-    model.add(Conv2D(filters=64, kernel_size=(5,5),
-                     strides=(1,1), padding='same',
+    model.add(Conv2D(filters=64, kernel_size=(5, 5),
+                     strides=(1, 1), padding='same',
                      activation='relu', name='conv2'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(2,2),
-                           strides=(2,2),
+    model.add(MaxPooling2D(pool_size=(3, 3),
+                           strides=(2, 2),
                            padding='valid'))
 
-    model.add(Conv2D(filters=32, kernel_size=(5,5),
-                     strides=(1,1), padding='same',
+    model.add(Conv2D(filters=64, kernel_size=(3, 3),
+                     strides=(1, 1), padding='same',
                      activation='relu', name='conv3'))
-    model.add(Conv2D(filters=32, kernel_size=(5,5),
-                     strides=(1,1), padding='same',
+    model.add(Conv2D(filters=128, kernel_size=(3, 3),
+                     strides=(1, 1), padding='same',
                      activation='relu', name='conv4'))
-    model.add(MaxPooling2D(pool_size=(3,3),
-                           strides=(3,3), padding='valid'))
+    # model.add(Conv2D(filters=256, kernel_size=(3,3),
+    #                 strides=(1,1), padding='same',
+    #                 activation='relu', name='conv5'))
+    model.add(MaxPooling2D(pool_size=(3, 3),
+                           strides=(2, 2), padding='valid'))
 
     model.add(Flatten())
 
-    model.add(Dense(100, activation='relu', name='fc'))
+    model.add(Dense(30, activation='relu', name='fc1'))
+    model.add(Dense(30, activation='relu', name='fc2'))
     model.add(Dropout(0.5))
 
     # Output Layer
@@ -413,21 +517,68 @@ def create_model():
 
     return model
 
+
+def create_model_resnet():
+    ResNet18, preprocess_input = Classifiers.get('resnet18')
+    base_model = ResNet18(input_shape=(IMSIZE, IMSIZE, 1), weights=None, include_top=False)
+    x = tensorflow.keras.layers.GlobalAveragePooling2D()(base_model.output)
+    output = tensorflow.keras.layers.Dense(2, activation='softmax')(x)
+    model = tensorflow.keras.models.Model(inputs=[base_model.input], outputs=[output])
+    # train
+    # model.compile(optimizer='SGD', loss='categorical_crossentropy', metrics=['accuracy'])
+
+    return model
+
+
+def create_model_mobilenet():
+    model = tf.keras.applications.MobileNet(
+        input_shape=(IMSIZE, IMSIZE, 1), weights=None, include_top=True,
+        alpha=.25,
+        depth_multiplier=1,
+        dropout=0.001,
+        input_tensor=None,
+        pooling=None,
+        classes=2,
+        classifier_activation="softmax",
+    )
+    return model
+
+
+def create_model(ask_for_comment=True):
+    model_type = create_model_mobilenet
+    model_comment = None
+    if ask_for_comment:
+        model_comment = input('short model comment?')
+        model_comment.replace(' ', '_')
+
+    log.info(f'created empty model with comment {model_comment}')
+    return model_type(), model_comment
+
+
 def measure_latency():
     log.info('measuring CNN latency in loop')
-    interpreter,input_details,output_details=load_tflite_model()
-    img=np.random.randint(0,255,(IMSIZE,IMSIZE,1))
-    N=100
-    for i in range(1,N):
+    interpreter, input_details, output_details = load_tflite_model()
+    img = np.random.randint(0, 255, (IMSIZE, IMSIZE, 1))
+    N = 100
+    for i in range(1, N):
         with Timer('CNN latency') as timer:
-            classify_joker_img(img,interpreter,input_details,output_details)
+            classify_joker_img(img, interpreter, input_details, output_details)
     timer.print_timing_info(log)
 
+
+class PlotHistoryCallback(History):
+
+    def on_epoch_end(self, epoch, logs=None):
+        super().on_epoch_end(epoch, logs)
+        keys = list(logs.keys())
+        log.info("End epoch {} of training; got log keys: {}".format(epoch, keys))
+        plot_history(self.model.history, 'history')
 
 
 def train(args=None):
     model_name = None
     tflite_model_name = None
+    model_comment = None  # for new models, string to append to model name
 
     start_time = time.time()
     start_timestr = time.strftime("%Y%m%d-%H%M")
@@ -444,10 +595,10 @@ def train(args=None):
     log.info(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
 
     num_classes = 2
-    checkpoint_filename_path = os.path.join(MODEL_DIR, 'models/joker_net_checkpoint.hdf5')
+    checkpoint_filename_path = os.path.join(MODEL_DIR, 'joker_net_checkpoint.hdf5')
 
-    model = create_model()
-    latest_existing_model_folder=None
+    model = None
+    latest_existing_model_folder = None
     if INITIALIZE_MODEL_FROM_LATEST:
         existing_model_folders = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '*/')
         TIMEOUT = 30
@@ -459,48 +610,50 @@ def train(args=None):
                     and getmtime_checkpoint > getmtime_stored_model \
                     and yes_or_no(f'checkpoint {checkpoint_filename_path} modified {datetime.datetime.fromtimestamp(getmtime_checkpoint)} \nis newer than saved model {existing_model_folders[0]} modified {datetime.datetime.fromtimestamp(getmtime_stored_model)},\n start from it?', timeout=TIMEOUT):
                 log.info(f'loading weights from checkpoint {checkpoint_filename_path}')
+                model, model_comment = create_model()
                 model.load_weights(checkpoint_filename_path)
             else:
                 if yes_or_no(f'model {latest_existing_model_folder} exists, start from it?', timeout=TIMEOUT):
                     log.info(f'initializing model from {latest_existing_model_folder}')
                     model = load_model(latest_existing_model_folder)
                 else:
-                    log.info('creating new empty model')
-                    model = create_model()
+
+                    model, model_comment = create_model()
         else:
             if os.path.isfile(checkpoint_filename_path) and yes_or_no('checkpoint exists, start from it?', timeout=TIMEOUT):
                 log.info(f'loading weights from checkpoint {checkpoint_filename_path}')
-                model = create_model()
+                model, model_comment = create_model()
                 model.load_weights(checkpoint_filename_path)
             else:
                 yn = yes_or_no("Could not find saved model or checkpoint. Initialize a new model?", timeout=TIMEOUT)
                 if yn:
                     log.info('creating new empty model')
-                    model = create_model()
+                    model, model_comment = create_model()
                 else:
                     log.warning('aborting training')
                     quit(1)
     else:
-        log.info('creating new empty model')
-    optimizer=tf.keras.optimizers.SGD(momentum=.9) # alessandro: SGD gives higher accuracy than Adam but include a momentuum
-    loss=tf.keras.losses.CategoricalCrossentropy()
+        model, model_comment = create_model()
+    optimizer = tf.keras.optimizers.SGD(momentum=.9)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
+    loss = tf.keras.losses.CategoricalCrossentropy()
     model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=['categorical_accuracy'])
     model.summary(print_fn=log.info)
 
-    train_batch_size = 128
+    train_batch_size = 64
     valid_batch_size = 64
     test_batch_size = 64
 
-    log.info('making training generator')
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
         rotation_range=30,  # 图片随机转动的角度
         width_shift_range=0.25,  # 图片水平偏移的幅度
-        height_shift_range=0.25,  # 图片竖直偏移的幅度
-        zoom_range=0.2,
-        # horizontal_flip=False
+        height_shift_range=0.15,  # don't shift too much vertically to avoid losing top of card
+        fill_mode='constant',
+        cval=0,  # fill edge pixels with black; default fills with long lines of color
+        zoom_range=[.6, 1.1],  # don't zoom too much in to avoid losing joker part of card
+        # horizontal_flip=False,
     )  # 随机放大或缩小
 
     log.info('making training generator')
@@ -510,16 +663,20 @@ def train(args=None):
         batch_size=train_batch_size,
         class_mode='categorical',
         color_mode='grayscale',
-        shuffle=True)
+        # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
+        shuffle=True,
+    )
 
     log.info('making validation generator')
+
     valid_generator = train_datagen.flow_from_directory(
         TRAIN_DATA_FOLDER + '/valid/',
         target_size=(IMSIZE, IMSIZE),
         batch_size=valid_batch_size,
         class_mode='categorical',
         color_mode='grayscale',
-        shuffle=True)
+        shuffle=True,  # irrelevant for validtion
+    )
 
     log.info('making test generator')
     test_datagen = ImageDataGenerator(rescale=1. / 255)
@@ -530,8 +687,6 @@ def train(args=None):
         class_mode='categorical',
         color_mode='grayscale',
         shuffle=False,
-        # save_to_dir='test_gen_samples',
-        # save_prefix=''
     )  # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
 
     # Path('test_gen_samples').mkdir(parents=True, exist_ok=True)
@@ -553,60 +708,42 @@ def train(args=None):
     stop_early = EarlyStopping(monitor='val_loss', patience=4, verbose=1, mode='min')
     save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
     # Profile from batches 10 to 15
-    tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log',
-                                                 profile_batch='10, 15')
+    # tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log', profile_batch='10, 15')
+    plot_callback = PlotHistoryCallback()
 
     if args.train:
         log.info('starting training')
-        epochs=300
+        epochs = 300
 
-        class_weight = {0: .9, 1: .1}
+        class_weight = {0: .1, 1: .9}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
+
         try:
             history = model.fit(train_generator,  # todo back to train generator
                                 # steps_per_epoch=150,
                                 epochs=epochs, verbose=1,
                                 validation_data=valid_generator,
                                 # validation_steps=25,
-                                callbacks=[stop_early, save_checkpoint, tb_callback],
-                                # max_queue_size=capacity,
+                                callbacks=[stop_early, save_checkpoint, plot_callback],
+                                max_queue_size=20,
+                                use_multiprocessing=False,
                                 # shuffle = True, # shuffle not valid for folder data generators
-                                workers=4,
+                                workers=8,
                                 class_weight=class_weight  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
-                                # it is better to avoid poking out finr until a joker is definitely detected
+                                # it is better to avoid poking out finger until a joker is definitely detected
                                 )
-            if history is not None:
-                try:
-                    training_history_filename = os.path.join(LOG_DIR, 'training_history'+'-'+start_timestr+'.npy')
-                    np.save(training_history_filename, history.history)
-                    log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
-                    log.info(f'history.history.keys()={history.history.keys()}')
+            plot_history(history, start_timestr)
+            training_history_filename = os.path.join(LOG_DIR, 'training_history' + '-' + start_timestr + '.npy')
+            np.save(training_history_filename, history.history)
+            log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
+            log.info(f'history.history.keys()={history.history.keys()}')
 
-                    # summarize history for accuracy
-                    plt.plot(history.history['categorical_accuracy'])
-                    plt.plot(history.history['val_categorical_accuracy'])
-                    plt.title('model accuracy')
-                    plt.ylabel('accuracy')
-                    plt.xlabel('epoch')
-                    plt.legend(['train', 'validate'], loc='upper left')
-                    plt.savefig(os.path.join(LOG_DIR,'accuracy'+'-'+start_timestr+'.png'))
-                    plt.show()
-                    # summarize history for loss
-                    plt.plot(history.history['loss'])
-                    plt.plot(history.history['val_loss'])
-                    plt.title('model loss')
-                    plt.ylabel('loss')
-                    plt.xlabel('epoch')
-                    plt.legend(['train', 'validate'], loc='upper left')
-                    plt.savefig(os.path.join(LOG_DIR,'loss'+'-'+start_timestr+'.png'))
-                    plt.show()
-                except KeyError as k:
-                    log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
         except KeyboardInterrupt:
             log.warning('keyboard interrupt, saving model and testing')
 
-        new_model_folder_name = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}_{start_timestr}')
+        mcs = f'_{model_comment}' if model_comment is not None else ''
+        new_model_folder_name = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}{mcs}_{start_timestr}')
 
         log.info(f'saving model to folder {new_model_folder_name}')
         model.save(new_model_folder_name)
@@ -641,22 +778,53 @@ def train(args=None):
     #                                  normalize=True)
     # disp.ax_.set_title('joker/nonjoker confusion matrix')
 
-    get_flops()
+    try:
+        measure_flops()
+    except Exception as e:
+        log.error(f'Caught {e} measuring flops')
     measure_latency()
     elapsed_time_min = (time.time() - start_time) / 60
     if args.train:
         log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {new_model_folder_name}.'
-             f'\nSee {LOG_FILE} for logging output for this run.')
+                 f'\nSee {LOG_FILE} for logging output for this run.')
 
 
-args=None # if run as module
+def plot_history(history, start_timestr):
+    if history is not None:
+        try:
+
+            # summarize history for accuracy
+            plt.figure('accuracy')
+            plt.plot(history.history['categorical_accuracy'])
+            plt.plot(history.history['val_categorical_accuracy'])
+            plt.title('model accuracy')
+            plt.ylabel('accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'validate'], loc='upper left')
+            plt.savefig(os.path.join(LOG_DIR, 'accuracy' + '-' + start_timestr + '.png'))
+            plt.show()
+            # summarize history for loss
+            plt.figure('loss')
+            plt.plot(history.history['loss'])
+            plt.plot(history.history['val_loss'])
+            plt.title('model loss')
+            plt.ylabel('loss')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'validate'], loc='upper left')
+            plt.savefig(os.path.join(LOG_DIR, 'loss' + '-' + start_timestr + '.png'))
+            plt.show()
+        except KeyError as k:
+            log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
+
+
+args = None  # if run as module
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='train:train CNN for trixsy', allow_abbrev=True, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--train", action='store_true', help="train model starting from latest (shows options to choose whether to initialize.")
     parser.add_argument("--test_accuracy", action='store_true', help="run network test rather than train.")
     parser.add_argument("--riffle_test", action='store_true', help="test by pausing playback/classify of recorded frames at detected jokers.")
-    parser.add_argument("--rename_images",  action='store_true', help="rename images in a folder consecutively sorting them by mtime.")
+    parser.add_argument("--rename_images", action='store_true', help="rename images in a folder consecutively sorting them by mtime.")
     parser.add_argument("--make_training_set", action='store_true', help="make training data from source images.")
     parser.add_argument("--test_random_samples", action='store_true', help="test random samples from test set.")
     parser.add_argument("--measure_flops", action='store_true', help="measures flops/frame of network.")
@@ -672,12 +840,11 @@ if __name__ == '__main__':
     elif args.test_random_samples:
         test_random_samples()
     elif args.riffle_test:
-        riffle_test()
+        riffle_test(args)
     elif args.measure_latency:
         measure_latency()
     elif args.measure_flops:
-        stats=get_flops()
-        log.info(f'total flops/frame={stats.total_flops}')
+        stats = measure_flops()
+        log.info(f'total flops/frame={eng(stats.total_flops)}')
     else:
         parser.print_help()
-

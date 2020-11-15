@@ -25,7 +25,7 @@ log=my_logger(__name__)
 
 
 
-def producer(record=None):
+def producer(args):
     """ produce frames for consumer
 
     :param record: record frames to a folder name record
@@ -41,6 +41,9 @@ def producer(record=None):
         cv2.destroyAllWindows()
 
     atexit.register(cleanup)
+    record=args.record
+    spacebar_records=args.spacebar_records
+    log.info(f'recording to {record} with spacebar_records={spacebar_records}')
 
     recording_folder = None
     if record is not None:
@@ -80,7 +83,7 @@ def producer(record=None):
     assert (device.set_config(
         libcaer.CAER_HOST_CONFIG_PACKETS,
         libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
-        1000))
+        4000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
     assert (device.set_data_exchange_blocking())
 
     # setting bias after data stream started
@@ -96,6 +99,7 @@ def producer(record=None):
     recording_frame_number = 0
     time_last_frame_sent=time.time()
     frames_dropped_counter=0
+    save_next_frame=not spacebar_records # if we don't supply the option, it will be False and we want to then save all frames
 
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
@@ -139,12 +143,13 @@ def producer(record=None):
                 log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
 
                 with Timer('send frame'):
-                    data = pickle.dumps((frame_number, frame)) # send frame_number to allow determining dropped frames in consumer
+                    time_last_frame_sent=time.time()
+                    data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
                     frame_number+=1
                     client_socket.sendto(data, udp_address)
-                    time_last_frame_sent=time.time()
-                if recording_folder is not None:
+                if recording_folder is not None and save_next_frame:
                     recording_frame_number=write_next_image(recording_folder,recording_frame_number,frame)
+                    # print('.',end='')
                 if SHOW_DVS_OUTPUT:
                     t=time.time()
                     if t-last_cv2_frame_time>1./MAX_SHOWN_DVS_FRAME_RATE_HZ:
@@ -157,12 +162,18 @@ def producer(record=None):
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', 600, 600)
                                 cv2_resized = True
-                            if cv2.waitKey(1) & 0xFF == ord('q'):
+                            k=    cv2.waitKey(1) & 0xFF
+                            if k== ord('q'):
                                 break
+                            elif spacebar_records and k==ord(' '):
+                                save_next_frame=True
+                            else:
+                                save_next_frame=not spacebar_records
+
     except KeyboardInterrupt:
         device.shutdown()
         if recording_folder is not None:
-            log.info(f'recordings of {recording_frame_number-1} frames saved in {recording_folder}')
+            log.info(f'*** recordings of {recording_frame_number-1} frames saved in {recording_folder}')
 
 
 
@@ -173,10 +184,13 @@ if __name__ == '__main__':
     parser.add_argument(
         "--record", type=str, default=None,
         help="record DVS frames into folder DATA_FOLDER/collected/<name>")
+    parser.add_argument(
+        "--spacebar_records", action='store_true',
+        help="only record when spacebar pressed down")
     args = parser.parse_args()
 
     try:
-        producer(record=args.record)
+        producer(args)
     except Exception as e:
         log.error(f'Error: {e}')
         sys.exit()

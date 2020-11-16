@@ -17,6 +17,7 @@ from tkinter import *
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import PIL
 import tensorflow as tf
+import tensorflow.keras.backend as K
 # from alessandro: use keras from tensorflow, not from keras directly
 from h5py.h5fd import LOG
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
@@ -579,6 +580,15 @@ class PlotHistoryCallback(History):
         log.info("End epoch {} of training; got log keys: {}".format(epoch, keys))
         plot_history(self.model.history, 'history')
 
+class SGDLearningRateTracker(Callback):
+
+    def on_epoch_end(self, batch, logs=None):
+        try:
+            optimizer = self.model.optimizer
+            lr = K.eval(optimizer.lr * K.pow(optimizer.decay_steps,optimizer.decay_rate))
+            log.info(f'SGD learning rate: {lr:.6f}')
+        except Exception as e:
+            log.error(f'caught {e} trying to compute learning rate')
 
 def train(args=None):
     model_name = None
@@ -588,9 +598,6 @@ def train(args=None):
     start_time = time.time()
     start_timestr = time.strftime("%Y%m%d-%H%M")
 
-    log.info(f'Tensorflow version {tf.version.VERSION}')
-    log.info(f'dataset path: TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}')
-    log.info(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
 
     checkpoint_filename_path = os.path.join(MODEL_DIR, 'joker_net_checkpoint.hdf5')
 
@@ -642,17 +649,18 @@ def train(args=None):
     fh.setFormatter(fmtter)
     log.addHandler(fh)
     log.info(f'added logging handler to {LOG_FILE}')
-
-    optimizer = tf.keras.optimizers.SGD(momentum=.9)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
-    loss = tf.keras.losses.CategoricalCrossentropy()
-    model.compile(loss=loss,
-                  optimizer=optimizer,
-                  metrics=['categorical_accuracy'])
-    model.summary(print_fn=log.info)
+    log.info(f'Tensorflow version {tf.version.VERSION}')
+    log.info(f'dataset path: TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}')
+    log.info(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
+    log.debug('test debug')
+    log.warning('test warning')
+    log.error('test error')
 
     train_batch_size = 64
     valid_batch_size = 64
     test_batch_size = 64
+
+
 
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
@@ -717,11 +725,24 @@ def train(args=None):
     print_datagen_summary(valid_generator)
     print_datagen_summary(test_generator)
 
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=1e-2,
+        decay_steps=train_generator.n//train_batch_size, # every epoch decrease learning rate
+        decay_rate=0.7)
+
+    optimizer = tf.keras.optimizers.SGD(momentum=.9, learning_rate=lr_schedule)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
+    loss = tf.keras.losses.CategoricalCrossentropy()
+    model.compile(loss=loss,
+                  optimizer=optimizer,
+                  metrics=['categorical_accuracy'])
+    model.summary(print_fn=log.info)
+
     stop_early = EarlyStopping(monitor='val_loss', patience=4, verbose=1, mode='min')
     save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
     # Profile from batches 10 to 15
     # tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log', profile_batch='10, 15')
     plot_callback = PlotHistoryCallback()
+    learning_rate_callback= SGDLearningRateTracker()
 
     if args.train:
         log.info('starting training')
@@ -737,7 +758,7 @@ def train(args=None):
                                 epochs=epochs, verbose=1,
                                 validation_data=valid_generator,
                                 # validation_steps=25,
-                                callbacks=[stop_early, save_checkpoint, plot_callback],
+                                callbacks=[stop_early, save_checkpoint, plot_callback,learning_rate_callback],
                                 max_queue_size=20,
                                 use_multiprocessing=False,
                                 # shuffle = True, # shuffle not valid for folder data generators

@@ -149,7 +149,9 @@ def producer(args):
                     client_socket.sendto(data, udp_address)
                 if recording_folder is not None and save_next_frame:
                     recording_frame_number=write_next_image(recording_folder,recording_frame_number,frame)
-                    # print('.',end='')
+                    print('.',end='')
+                    if recording_frame_number%80==0:
+                        print('')
                 if SHOW_DVS_OUTPUT:
                     t=time.time()
                     if t-last_cv2_frame_time>1./MAX_SHOWN_DVS_FRAME_RATE_HZ:
@@ -164,6 +166,8 @@ def producer(args):
                                 cv2_resized = True
                             k=    cv2.waitKey(1) & 0xFF
                             if k== ord('q'):
+                                if recording_folder is not None:
+                                    log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
                                 break
                             elif spacebar_records and k==ord(' '):
                                 save_next_frame=True

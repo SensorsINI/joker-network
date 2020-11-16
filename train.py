@@ -219,8 +219,10 @@ def riffle_test(args):
         jokers_list_file = open(os.path.join(LOG_DIR, f'joker-file-list-{start_timestr}.txt'), 'w')
         nonjokers_list_file = open(os.path.join(LOG_DIR, f'nonjoker-file-list-{start_timestr}.txt'), 'w')
 
+        cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('frame', 800, 400)
         try:
-            while True:
+            for idx in tqdm(range(len(ls))):
                 idx = idx + (1 if 'fwd' in mode else -1)
                 if idx >= len(ls):
                     raise GetOutOfLoop
@@ -233,7 +235,7 @@ def riffle_test(args):
                     except PIL.UnidentifiedImageError as e:
                         log.warning(f'{e}: {image_file_path} is not an image?')
                         continue
-                    if img.format != 'PNG' and img.format != 'JPEG':
+                    if (img.format is None and (img.width!=IMSIZE or img.height!=IMSIZE)) and img.format != 'PNG' and img.format != 'JPEG': # adobe media encoder does not set PNG type correctly
                         log.warning(f'{image_file_path} is not PNG or JPEG, skipping?')
                         continue
                     img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
@@ -242,16 +244,16 @@ def riffle_test(args):
 
                     file = jokers_list_file if is_joker else nonjokers_list_file
                     file.write(os.path.realpath(image_file_path) + '\n')
-                    img_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
-                    if is_joker:
-                        cv2.putText(img_arr, f'Joker {joker_prob * 100:.1f}%', (10, 30), cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
-                        print('\a')  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
-                    cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-                    cv2.imshow('frame', img_arr)
-                    cv2.resizeWindow('frame', 800, 400)
+                    if not args.show_only_jokers or (args.show_only_jokers and is_joker):
+                        img_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
+                        cv2.putText(img_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 30), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 2)
+                        # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
+                        cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+                        cv2.imshow('frame', img_arr)
+                        cv2.resizeWindow('frame', 800, 400)
 
                     if not is_joker:
-                        k = cv2.waitKey(15)
+                        k = cv2.waitKey(1)
                     else:
                         k = cv2.waitKey(2000)  # wait longer for joker detected
                     if k != -1: print(f'k={k}')
@@ -556,6 +558,8 @@ def create_model(ask_for_comment=True):
     return model_type(), model_comment
 
 
+
+
 def measure_latency():
     log.info('measuring CNN latency in loop')
     interpreter, input_details, output_details = load_tflite_model()
@@ -583,19 +587,11 @@ def train(args=None):
 
     start_time = time.time()
     start_timestr = time.strftime("%Y%m%d-%H%M")
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    LOG_FILE = os.path.join(LOG_DIR, f'training-{start_timestr}.log')
-    fh = logging.FileHandler(LOG_FILE, 'w')  # 'w' to overwrite, not append
-    fh.setLevel(logging.INFO)
-    fmtter = logging.Formatter(fmt="%(asctime)s-%(levelname)s-%(message)s")
-    fh.setFormatter(fmtter)
-    log.addHandler(fh)
 
     log.info(f'Tensorflow version {tf.version.VERSION}')
     log.info(f'dataset path: TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}')
     log.info(f'TRAIN_DATA_FOLDER={TRAIN_DATA_FOLDER}\nSRC_DATA_FOLDER={SRC_DATA_FOLDER}')
 
-    num_classes = 2
     checkpoint_filename_path = os.path.join(MODEL_DIR, 'joker_net_checkpoint.hdf5')
 
     model = None
@@ -635,6 +631,18 @@ def train(args=None):
                     quit(1)
     else:
         model, model_comment = create_model()
+
+    mcs = f'_{model_comment}' if model_comment is not None else ''
+    new_model_folder_name = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}{mcs}_{start_timestr}')
+    Path(new_model_folder_name).mkdir(parents=True, exist_ok=True)
+    LOG_FILE = os.path.join(new_model_folder_name, f'training-{start_timestr}.log')
+    fh = logging.FileHandler(LOG_FILE, 'w')  # 'w' to overwrite, not append
+    fh.setLevel(logging.INFO)
+    fmtter = logging.Formatter(fmt="%(asctime)s-%(levelname)s-%(message)s")
+    fh.setFormatter(fmtter)
+    log.addHandler(fh)
+    log.info(f'added logging handler to {LOG_FILE}')
+
     optimizer = tf.keras.optimizers.SGD(momentum=.9)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
     loss = tf.keras.losses.CategoricalCrossentropy()
     model.compile(loss=loss,
@@ -648,12 +656,12 @@ def train(args=None):
 
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
-        rotation_range=30,  # 图片随机转动的角度
-        width_shift_range=0.25,  # 图片水平偏移的幅度
-        height_shift_range=0.15,  # don't shift too much vertically to avoid losing top of card
+        rotation_range=15,  # 图片随机转动的角度
+        width_shift_range=0.2,  # 图片水平偏移的幅度
+        height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
         fill_mode='constant',
         cval=0,  # fill edge pixels with black; default fills with long lines of color
-        zoom_range=[.6, 1.1],  # don't zoom too much in to avoid losing joker part of card
+        zoom_range=[.9, 1.25],  # NOTE zoom >1 minifies, don't zoom in (<1) too much in to avoid losing joker part of card
         # horizontal_flip=False,
     )  # 随机放大或缩小
 
@@ -666,6 +674,7 @@ def train(args=None):
         color_mode='grayscale',
         # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
         shuffle=True,
+        interpolation='nearest',
     )
 
     log.info('making validation generator')
@@ -677,6 +686,7 @@ def train(args=None):
         class_mode='categorical',
         color_mode='grayscale',
         shuffle=True,  # irrelevant for validtion
+        interpolation='nearest',
     )
 
     log.info('making test generator')
@@ -688,6 +698,7 @@ def train(args=None):
         class_mode='categorical',
         color_mode='grayscale',
         shuffle=False,
+        interpolation='nearest',
     )  # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
 
     # Path('test_gen_samples').mkdir(parents=True, exist_ok=True)
@@ -716,7 +727,7 @@ def train(args=None):
         log.info('starting training')
         epochs = 300
 
-        class_weight = {0: .1, 1: .9}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
+        class_weight = {0: .8, 1: .2}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
 
@@ -743,8 +754,6 @@ def train(args=None):
         except KeyboardInterrupt:
             log.warning('keyboard interrupt, saving model and testing')
 
-        mcs = f'_{model_comment}' if model_comment is not None else ''
-        new_model_folder_name = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}{mcs}_{start_timestr}')
 
         log.info(f'saving model to folder {new_model_folder_name}')
         model.save(new_model_folder_name)
@@ -818,6 +827,67 @@ def plot_history(history, start_timestr):
             log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
 
 
+def generate_augmented_images(args):
+    folder = TRAIN_DATA_FOLDER
+    os.chdir(folder)
+    start_time = time.time()
+    start_timestr = time.strftime("%Y%m%d-%H%M")
+    root = Tk()
+    root.withdraw()
+    folder = filedialog.askdirectory()
+    if len(folder) == 0:
+        log.info('aborted')
+        quit(1)
+    os.chdir(folder)
+
+    train_datagen = ImageDataGenerator(  # 实例化
+        rescale=1. / 255,  # todo check this
+        rotation_range=15,  # 图片随机转动的角度
+        width_shift_range=0.2,  # 图片水平偏移的幅度
+        height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
+        fill_mode='constant',
+        cval=0,  # fill edge pixels with black; default fills with long lines of color
+        zoom_range=[.9, 1.25],  # NOTE zoom >1 minifies, don't zoom in (<1) too much in to avoid losing joker part of card
+        # horizontal_flip=False,
+    )  # 随机放大或缩小
+
+    log.info('making training generator')
+    train_generator = train_datagen.flow_from_directory(
+        '.',
+        target_size=(IMSIZE, IMSIZE),
+        batch_size=8, # small batch
+        class_mode='categorical',
+        color_mode='grayscale',
+        # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
+        shuffle=True,
+        interpolation='nearest',
+    )
+
+    log.info(f'train_datagen: {train_datagen}')
+    log.info(f'train_generator: {train_generator.n} images')
+    folder = os.path.join(SRC_DATA_FOLDER, 'augmented')
+    Path(folder).mkdir(parents=True, exist_ok=True)
+
+    cv2.namedWindow('nonjoker',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('nonjoker',800,800)
+    cv2.namedWindow('joker',cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('joker',800,800)
+    while True:
+        batch = train_generator.__next__()
+        imgs=batch[0]
+        labels=batch[1]
+        for i in range(imgs.shape[0]):
+            if labels[i][0]>labels[i][1]:
+                cv2.imshow('nonjoker',imgs[i])
+            else:
+                cv2.imshow('joker',imgs[i])
+
+            k=cv2.waitKey(15)&0xff
+            if k==ord('x') or k==ord('q'):
+                quit(0)
+
+
+
 args = None  # if run as module
 
 if __name__ == '__main__':
@@ -825,11 +895,13 @@ if __name__ == '__main__':
     parser.add_argument("--train", action='store_true', help="train model starting from latest (shows options to choose whether to initialize.")
     parser.add_argument("--test_accuracy", action='store_true', help="run network test rather than train.")
     parser.add_argument("--riffle_test", action='store_true', help="test by pausing playback/classify of recorded frames at detected jokers.")
+    parser.add_argument("--show_only_jokers", action='store_true', help="for riffle_test, show only detected jokers in cv2 windows.")
     parser.add_argument("--rename_images", action='store_true', help="rename images in a folder consecutively sorting them by mtime.")
     parser.add_argument("--make_training_set", action='store_true', help="make training data from source images.")
     parser.add_argument("--test_random_samples", action='store_true', help="test random samples from test set.")
     parser.add_argument("--measure_flops", action='store_true', help="measures flops/frame of network.")
     parser.add_argument("--measure_latency", action='store_true', help="measures CNN latency.")
+    parser.add_argument("--augment_training_set", action='store_true', help="show augmented training images using default augmentation.")
 
     args = parser.parse_args()
     if args.train or args.test_accuracy:
@@ -844,6 +916,8 @@ if __name__ == '__main__':
         riffle_test(args)
     elif args.measure_latency:
         measure_latency()
+    elif args.augment_training_set:
+        generate_augmented_images(args)
     elif args.measure_flops:
         stats = measure_flops()
         log.info(f'total flops/frame={eng(stats.total_flops)}')

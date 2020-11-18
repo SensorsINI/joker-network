@@ -417,25 +417,32 @@ def load_latest_model():
     return model
 
 
-def load_tflite_model():
+def load_tflite_model(folder=None):
     """ loads the most recent trained TFLITE model
 
+    :param folder: folder where TFLITE_FILE_NAME is to be found, or None to find latest one
+
     :returns: interpreter,input_details,output_details
+
+    :raises: FileNotFoundError if TFLITE_FILE_NAME is not found in folder
     """
-    existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
-    tflite_model_path = None
-    if len(existing_models) > 0:
-        latest_model_folder = max(existing_models, key=os.path.getmtime)
-        tflite_model_path = os.path.join(latest_model_folder, TFLITE_FILE_NAME)
-        if not os.path.isfile(tflite_model_path):
-            log.error(f'no TFLITE model found at {tflite_model_path}')
-            quit(1)
+    tflite_model_path=None
+    if folder is None:
+        existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
+        if len(existing_models) > 0:
+            latest_model_folder = max(existing_models, key=os.path.getmtime)
+            tflite_model_path = os.path.join(latest_model_folder, TFLITE_FILE_NAME)
+            if not os.path.isfile(tflite_model_path):
+                raise FileNotFoundError(f'no TFLITE model found at {tflite_model_path}')
+        else:
+            raise FileNotFoundError(f'no models found in {MODEL_DIR}')
+
     else:
-        log.error(f'no models found in {MODEL_DIR}')
-        quit(1)
-    log.info('loading latest tflite CNN model {}'.format(tflite_model_path))
+        tflite_model_path=os.path.join(folder, TFLITE_FILE_NAME)
+        log.info('loading tflite CNN model {}'.format(tflite_model_path))
     # model = load_model(MODEL)
     # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
+
     interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
     interpreter.allocate_tensors()
     # Get input and output tensors.
@@ -585,9 +592,9 @@ def create_model(ask_for_comment=True):
     return model_type(), new_model_folder_name
 
 
-def measure_latency():
+def measure_latency(model_folder=None):
     log.info('measuring CNN latency in loop')
-    interpreter, input_details, output_details = load_tflite_model()
+    interpreter, input_details, output_details = load_tflite_model(model_folder)
     img = np.random.randint(0, 255, (IMSIZE, IMSIZE, 1))
     N = 100
     for i in range(1, N):
@@ -832,7 +839,7 @@ def train(args=None):
         measure_flops()
     except Exception as e:
         log.error(f'Caught {e} measuring flops')
-    measure_latency()
+    measure_latency(model_folder)
     elapsed_time_min = (time.time() - start_time) / 60
     if args.train:
         log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {new_model_folder_name}.'

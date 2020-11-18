@@ -106,7 +106,7 @@ def producer(args):
         numpy_file = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
         while True:
 
-            with Timer('overall producer frame rate', numpy_file=numpy_file , show_hist=True):
+            with Timer('overall producer frame rate', numpy_file=numpy_file , show_hist=True) as timer_overall:
                 with Timer('accumulate DVS'):
                     events = None
                     while events is None or len(events)<EVENT_COUNT_PER_FRAME:
@@ -169,6 +169,8 @@ def producer(args):
                                 if recording_folder is not None:
                                     log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
                                 break
+                            elif k==ord('p'):
+                                print_timing_info()
                             elif spacebar_records and k==ord(' '):
                                 save_next_frame=True
                             else:

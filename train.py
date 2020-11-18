@@ -294,11 +294,11 @@ def riffle_test(args):
                     log.error(f'caught {e} for file {image_file_path}')
                     raise GetOutOfLoop
         except GetOutOfLoop:
-            jokers_list_file.close()
-            nonjokers_list_file.close()
             log.info(f'jokers saved as {os.path.realpath(jokers_list_file.name)} and nonjokers saved in {os.path.realpath(nonjokers_list_file.name)}')
             continue
 
+    jokers_list_file.close()
+    nonjokers_list_file.close()
 
 def test_random_samples():
     """ Runs test on test folder to evaluate accuracy on example images

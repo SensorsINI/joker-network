@@ -12,6 +12,8 @@ import cv2
 import numpy as np
 import atexit
 from engineering_notation import EngNumber  as eng  # only from pip
+from matplotlib import pyplot as plt
+import numpy as np
 
 LOGGING_LEVEL = logging.INFO
 PORT = 12000  # UDP port used to send frames from producer to consumer
@@ -208,10 +210,17 @@ def print_timing_info():
                 log.error(f'could not save numpy file {timers[k].numpy_file}; caught {e}')
 
         if timers[k].show_hist:
-            from matplotlib import pyplot as plt
-            dt = np.log10(np.clip(np.array(v),1e-6, None))
-            plt.hist(dt,bins=100)
-            plt.xlabel('log10(interval[ms])')
+
+            def plot_loghist(x, bins):
+                hist, bins = np.histogram(x, bins=bins)
+                logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins))
+                plt.hist(x, bins=logbins)
+                plt.xscale('log')
+
+            dt = np.clip(a,1e-6, None)
+            # logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins))
+            plot_loghist(dt,bins=100)
+            plt.xlabel('interval[ms]')
             plt.ylabel('frequency')
             plt.title(k)
             plt.show()

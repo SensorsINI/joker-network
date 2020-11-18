@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     saved_non_jokers = collections.deque(maxlen=NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER)  # lists of images to save
     Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
-    Path(NON_JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
+    Path(NONJOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
 
 
     def next_path_index(path):
@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
 
     next_joker_index = next_path_index(JOKERS_FOLDER)
-    next_non_joker_index = next_path_index(NON_JOKERS_FOLDER)
+    next_non_joker_index = next_path_index(NONJOKERS_FOLDER)
     cv2_resized = dict()
     finger_out_time = 0
     STATE_IDLE = 0
@@ -167,7 +167,7 @@ if __name__ == '__main__':
                 show_frame(save_img, 'joker', cv2_resized)
                 non_joker_window_number=0
                 for saved_img in saved_non_jokers:
-                    next_non_joker_index= write_next_image(NON_JOKERS_FOLDER, next_non_joker_index, saved_img)
+                    next_non_joker_index= write_next_image(NONJOKERS_FOLDER, next_non_joker_index, saved_img)
                     show_frame(saved_img, f'nonjoker{non_joker_window_number}', cv2_resized)
                     non_joker_window_number+=1
                 saved_non_jokers.clear()

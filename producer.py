@@ -34,18 +34,20 @@ def producer(args):
     udp_address = ('', PORT)
 
     device = DAVIS(noise_filter=True)
+    recording_folder = None
+    recording_frame_number = 0
 
     def cleanup():
         log.info('closing {}'.format(device))
         device.shutdown()
         cv2.destroyAllWindows()
+        if recording_folder is not None:
+            log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
 
     atexit.register(cleanup)
     record=args.record
     spacebar_records=args.spacebar_records
-    log.info(f'recording to {record} with spacebar_records={spacebar_records}')
-
-    recording_folder = None
+    log.info(f'recording to {record} with spacebar_records={spacebar_records} and args {str(args)}')
     if record is not None:
         recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
         log.info(f'recording frames to {recording_folder}')
@@ -96,7 +98,6 @@ def producer(args):
     last_cv2_frame_time = time.time()
     frame=None
     frame_number=0
-    recording_frame_number = 0
     time_last_frame_sent=time.time()
     frames_dropped_counter=0
     save_next_frame=not spacebar_records # if we don't supply the option, it will be False and we want to then save all frames
@@ -109,7 +110,7 @@ def producer(args):
             with Timer('overall producer frame rate', numpy_file=numpy_file , show_hist=True) as timer_overall:
                 with Timer('accumulate DVS'):
                     events = None
-                    while events is None or len(events)<EVENT_COUNT_PER_FRAME:
+                    while events is None or len(events)<args.num_events:
                         pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
                         # assemble 'frame' of EVENT_COUNT events
                         if  num_pol_event>0:
@@ -134,8 +135,8 @@ def producer(args):
                         events[:,2]=np.floor(events[:,2]*yfac)
                         frame, _, _ = np.histogram2d(events[:, 2], events[:, 1], bins=(IMSIZE, IMSIZE), range=histrange)
                         fmax_count=np.max(frame)
-                        frame[frame > EVENT_COUNT_CLIP_VALUE]=EVENT_COUNT_CLIP_VALUE
-                        frame= (255. / EVENT_COUNT_CLIP_VALUE) * frame # max pixel will have value 255
+                        frame[frame > args.clip_count]=args.clip_count
+                        frame= (255. / args.clip_count) * frame # max pixel will have value 255
 
                 # statistics
                 focc=np.count_nonzero(frame)
@@ -168,6 +169,7 @@ def producer(args):
                             if k== ord('q'):
                                 if recording_folder is not None:
                                     log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
+                                print_timing_info()
                                 break
                             elif k==ord('p'):
                                 print_timing_info()
@@ -176,10 +178,9 @@ def producer(args):
                             else:
                                 save_next_frame=not spacebar_records
 
-    except KeyboardInterrupt:
-        device.shutdown()
-        if recording_folder is not None:
-            log.info(f'*** recordings of {recording_frame_number-1} frames saved in {recording_folder}')
+    except KeyboardInterrupt as e:
+        log.info(f'got KeyboardInterrupt {e}')
+        cleanup()
 
 
 
@@ -191,12 +192,14 @@ if __name__ == '__main__':
         "--record", type=str, default=None,
         help="record DVS frames into folder DATA_FOLDER/collected/<name>")
     parser.add_argument(
+        "--num_events", type=int, default=EVENT_COUNT_PER_FRAME,
+        help="number of events per constant-count DVS frame")
+    parser.add_argument(
+        "--clip_count", type=int, default=EVENT_COUNT_CLIP_VALUE,
+        help="number of events per pixel for full white pixel value")
+    parser.add_argument(
         "--spacebar_records", action='store_true',
         help="only record when spacebar pressed down")
     args = parser.parse_args()
 
-    try:
-        producer(args)
-    except Exception as e:
-        log.error(f'Error: {e}')
-        sys.exit()
+    producer(args)

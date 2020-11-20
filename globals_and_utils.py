@@ -189,7 +189,6 @@ class Timer:
                                                                           eng(timing_max)))
 
 def print_timing_info():
-    print('== Timing statistics ==')
     for k,v in times.items():  # k is the name, v is the list of times
         a = np.array(v)
         timing_mean = np.mean(a)
@@ -197,7 +196,7 @@ def print_timing_info():
         timing_median = np.median(a)
         timing_min = np.min(a)
         timing_max = np.max(a)
-        log.info('\n{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(k, len(a),
+        log.info('== Timing statistics from all Timer ==\n{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(k, len(a),
                                                                           eng(timing_mean), eng(timing_std),
                                                                           eng(timing_median), eng(timing_min),
                                                                           eng(timing_max)))
@@ -212,18 +211,24 @@ def print_timing_info():
         if timers[k].show_hist:
 
             def plot_loghist(x, bins):
-                hist, bins = np.histogram(x, bins=bins)
-                logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins))
-                plt.hist(x, bins=logbins)
+                hist, bins = np.histogram(x, bins=bins) # histogram x linearly
+                if len(bins)<2 or bins[0]<=0:
+                    log.error(f'cannot plot histogram since bins={bins}')
+                    return
+                logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins)) # use resulting bin ends to get log bins
+                plt.hist(x, bins=logbins) # now again histogram x, but with the log-spaced bins, and plot this histogram
                 plt.xscale('log')
 
             dt = np.clip(a,1e-6, None)
             # logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins))
-            plot_loghist(dt,bins=100)
-            plt.xlabel('interval[ms]')
-            plt.ylabel('frequency')
-            plt.title(k)
-            plt.show()
+            try:
+                plot_loghist(dt,bins=100)
+                plt.xlabel('interval[ms]')
+                plt.ylabel('frequency')
+                plt.title(k)
+                plt.show()
+            except Exception as e:
+                log.error(f'could not plot histogram: got {e}')
 
 def write_next_image(dir:str, idx:int, img):
     """ Saves data sample image

@@ -6,6 +6,7 @@
 import argparse
 import glob
 import shutil
+from ctypes import pointer
 from pathlib import Path
 from random import random
 from shutil import copyfile
@@ -22,8 +23,8 @@ import tensorflow.keras.backend as K
 # from alessandro: use keras from tensorflow, not from keras directly
 from h5py.h5fd import LOG
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.layers import Dense, Dropout, Activation, Flatten
+from tensorflow.python.keras.models import Sequential, Model
+from tensorflow.python.keras.layers import Dense, Dropout, Activation, Flatten, GlobalAveragePooling2D
 from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.python.keras.models import load_model
@@ -222,77 +223,87 @@ def riffle_test(args):
         os.chdir(folder)
         ls = os.listdir()
         ls = sorted(ls)
+        nfiles=len(ls)
         first = True
         mode = 'fwd'
         idx = -1
 
         try:
-            for idx in tqdm(range(len(ls))):
-                idx = idx + (1 if 'fwd' in mode else -1)
-                if idx >= len(ls):
-                    raise GetOutOfLoop
-                image_file_path = ls[idx]
-                if os.path.isdir(image_file_path):
-                    continue
-                try:
+            with tqdm(total=nfiles, file=sys.stdout) as pbar:
+                while True:
+                    idx = idx + (1 if mode=='fwd' or mode=='step-fwd' else -1)
+                    pbar.update(idx)
+                    if idx >= len(ls):
+                        raise GetOutOfLoop
+                    image_file_path = ls[idx]
+                    if os.path.isdir(image_file_path):
+                        continue
                     try:
-                        img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
-                    except PIL.UnidentifiedImageError as e:
-                        log.warning(f'{e}: {image_file_path} is not an image?')
-                        continue
-                    if (img.format is None and (img.width != IMSIZE or img.height != IMSIZE)) and img.format != 'PNG' and img.format != 'JPEG':  # adobe media encoder does not set PNG type correctly
-                        log.warning(f'{image_file_path} is not PNG or JPEG, skipping?')
-                        continue
-                    img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
-                    img_arr = tf.image.resize(img_arr, (IMSIZE, IMSIZE))  # note we do NOT want black borders and to preserve aspect ratio! We just want to squash to square
-                    is_joker, joker_prob, pred = classify_joker_img(img_arr, interpreter, input_details, output_details)
-                    threshold_pause_prob = .05
-                    # override default threshold to show ambiguous samples
-                    file = jokers_list_file if is_joker else nonjokers_list_file
-                    file.write(os.path.realpath(image_file_path) + '\n')
-                    is_joker = joker_prob > JOKER_DETECT_THRESHOLD_SCORE
-                    if not args.show_only_jokers or (args.show_only_jokers and is_joker):
-                        img_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
-                        cv2.putText(img_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
-                        # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
-                        cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-                        cv2.imshow('frame', img_arr)
-                    if joker_prob < threshold_pause_prob:
-                        k = cv2.waitKey(15)
-                    else:
-                        k = cv2.waitKey(0)  # wait longer for joker detected
-                    if k != -1: print(f'k={k}')
-                    k = k & 0xff
-                    if k == 27 or k == ord('q') or k == ord('x'):  # quit
-                        cv2.destroyAllWindows()
-                        jokers_list_file.close()
-                        nonjokers_list_file.close()
-                        log.info(f'jokers saved as {os.path.realpath(jokers_list_file.name)} and nonjokers saved in {os.path.realpath(nonjokers_list_file.name)}')
-                        quit()
-                    elif k == ord('\n') or k == ord('\r'):  # enter/newline/cr
-                        os.chdir('..')
-                        raise GetOutOfLoop  # choose new folder
-                    elif k == ord('h'):
-                        print_help()
-                    elif k == ord('j'):
-                        log.info(f'moving {image_file_path} to {JOKERS_FOLDER}')
                         try:
-                            shutil.move(image_file_path, JOKERS_FOLDER)
-                        except Exception as e:
-                            log.error(f'could not move {image_file_path}->{JOKERS_FOLDER}: caught {e}')
+                            color_mode='grayscale' if input_details[0]['shape'][3]==1 else 'rgb'
+                            img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode=color_mode)
+                        except PIL.UnidentifiedImageError as e:
+                            log.warning(f'{e}: {image_file_path} is not an image?')
+                            continue
+                        if (img.format is None and (img.width != IMSIZE or img.height != IMSIZE)) and img.format != 'PNG' and img.format != 'JPEG':  # adobe media encoder does not set PNG type correctly
+                            log.warning(f'{image_file_path} is not PNG or JPEG, skipping?')
+                            continue
+                        img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
+                        img_arr = tf.image.resize(img_arr, (IMSIZE, IMSIZE))  # note we do NOT want black borders and to preserve aspect ratio! We just want to squash to square
+                        is_joker, joker_prob, pred = classify_joker_img(img_arr, interpreter, input_details, output_details)
+                        threshold_pause_prob = .05
+                        # override default threshold to show ambiguous samples
+                        file = jokers_list_file if is_joker else nonjokers_list_file
+                        file.write(os.path.realpath(image_file_path) + '\n')
+                        is_joker = joker_prob > JOKER_DETECT_THRESHOLD_SCORE
+                        if not args.show_only_jokers or (args.show_only_jokers and is_joker):
+                            img_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
+                            cv2.putText(img_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+                            # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
+                            cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+                            cv2.imshow('frame', img_arr)
+                        if joker_prob < threshold_pause_prob and mode=='fwd':
+                            k = cv2.waitKey(15)
+                        else:
+                            k = cv2.waitKey(0)  # wait longer for joker detected
+                        k = k & 0xff
+                        if k == 27 or k == ord('q') or k == ord('x'):  # quit
+                            cv2.destroyAllWindows()
+                            jokers_list_file.close()
+                            nonjokers_list_file.close()
+                            log.info(f'jokers saved as {os.path.realpath(jokers_list_file.name)} and nonjokers saved in {os.path.realpath(nonjokers_list_file.name)}')
+                            quit()
+                        elif k==ord('.'):
+                            mode='step-fwd'
+                            continue
+                        elif k==ord(','):
+                            mode='step-back'
+                            continue
+                        elif k == ord('\n') or k == ord('\r'):  # enter/newline/cr
+                            os.chdir('..')
+                            raise GetOutOfLoop  # choose new folder
+                        elif k == ord('h'):
+                            print_help()
+                        elif k == ord('j'):
+                            log.info(f'moving {image_file_path} to {JOKERS_FOLDER}')
+                            try:
+                                shutil.move(image_file_path, JOKERS_FOLDER)
+                            except Exception as e:
+                                log.error(f'could not move {image_file_path}->{JOKERS_FOLDER}: caught {e}')
 
-                    elif k == ord('n'):
-                        log.info(f'moving {image_file_path} to {NONJOKERS_FOLDER}')
-                        try:
-                            shutil.move(image_file_path, NONJOKERS_FOLDER)
-                        except Exception as e:
-                            log.error(f'could not move {image_file_path}->{NONJOKERS_FOLDER}: caught {e}')
+                        elif k == ord('n'):
+                            log.info(f'moving {image_file_path} to {NONJOKERS_FOLDER}')
+                            try:
+                                shutil.move(image_file_path, NONJOKERS_FOLDER)
+                            except Exception as e:
+                                log.error(f'could not move {image_file_path}->{NONJOKERS_FOLDER}: caught {e}')
 
-                    elif k == 255 or k == ord(' '):  # no key or space
-                        continue
-                except Exception as e:
-                    log.error(f'caught {e} for file {image_file_path}')
-                    raise GetOutOfLoop
+                        elif k == 255 or k == ord(' '):  # no key or space
+                            mode='fwd'
+                            continue
+                    except Exception as e:
+                        log.error(f'caught {e} for file {image_file_path}')
+                        raise GetOutOfLoop
         except GetOutOfLoop:
             log.info(f'jokers saved as {os.path.realpath(jokers_list_file.name)} and nonjokers saved in {os.path.realpath(nonjokers_list_file.name)}')
             continue
@@ -390,7 +401,9 @@ def classify_joker_img(img: np.array, interpreter, input_details, output_details
 
     :returns: is_joker (True/False), joker_probability (0-1), prediction[2]=[nonjoker, joker]
     """
-    interpreter.set_tensor(input_details[0]['index'], (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32))
+    nchan=input_details[0]['shape'][3]
+    inp=(1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32) # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
+    interpreter.set_tensor(input_details[0]['index'], inp)
     interpreter.invoke()
     pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
     joker_prob = pred_vector[1]
@@ -557,16 +570,51 @@ def create_model_resnet():
 
 
 def create_model_mobilenet():
+    ''' Creates MobileNet model
+    https://keras.io/api/applications/mobilenet/
+
+    '''
+    weights = 'imagenet'
+    alpha = .25 # 0.25 is smallest version with imagenet weights
+    depth_multiplier = int(1)
+    dropout = 0.001 # default is .001
+    include_top=False # set false to specify our own FC layers
+    fully_connected_layers=(128,128) # our FC layers
+    num_input_channels=3 if weights=='imagenet' else 1
+    pooling='avg' # default is avg for mobilenet
+    freeze=True # set true to freeze imagenet feature weights
+    log.info(f'creating MobileNet with weights={weights} alpha={alpha} depth_multiplier={depth_multiplier} dropout={dropout} fully_connected_layers={fully_connected_layers} pooling={pooling} frozen_imagenet_layers={freeze}')
     model = tf.keras.applications.MobileNet(
-        input_shape=(IMSIZE, IMSIZE, 1), weights=None, include_top=True,
-        alpha=.25,
-        depth_multiplier=1,
-        dropout=0.001,
+        input_shape=(IMSIZE, IMSIZE, num_input_channels), # must be 3 channel input if using imagenet weights
+        weights=weights,
+        include_top=include_top,
+        alpha=alpha,
+        depth_multiplier=depth_multiplier,
+        dropout=dropout,
         input_tensor=None,
-        pooling=None,
+        pooling=pooling,
         classes=2,
         classifier_activation="softmax",
     )
+    model.trainable=not freeze
+    # add preprocessing for imagenet input
+    i = tf.keras.layers.Input([IMSIZE, IMSIZE, num_input_channels], dtype=tf.uint8)
+    x = tf.cast(i, tf.float32)
+    x = tf.keras.applications.mobilenet.preprocess_input(x)
+    core = tf.keras.applications.MobileNet()
+    x = core(x)
+    # define model to include input
+    model = tf.keras.Model(inputs=[i], outputs=[x])
+
+    if not include_top: # if we add our own FC output, then we need to wrap it with input layers
+        # x=Flatten()(model.output)
+        x=GlobalAveragePooling2D()(model)
+        for n in fully_connected_layers:
+            x=Dense(n, activation='relu')(x)  # we add dense layers so that the model can learn more complex functions and classify for better results.
+        # Output Layer
+        output=Dense(2, activation='softmax', name='output')(x)
+        final=Model(inputs=model.inputs, outputs=output, name='joker-mobilenet')
+        return final
     return model
 
 
@@ -574,20 +622,21 @@ def create_model(ask_for_comment=True):
     """
     Creates a new instance of model, returning the model folder, and starts file logger in it
 
-    :param ask_for_comment: True to ask for comment as part of filename
+    :param ask_for_comment: True to ask for comment as part of filename, also creates a folder for the model. Set to False to just create model in memory.
 
     :returns: model, model_folder_path
     """
     model_type = create_model_mobilenet
+    new_model_folder_name=None
     model_comment = None
     if ask_for_comment:
         model_comment = input('short model comment?')
         model_comment.replace(' ', '_')
 
-    start_timestr = time.strftime("%Y%m%d-%H%M")
-    mcs = f'_{model_comment}' if model_comment is not None else ''
-    new_model_folder_name = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}{mcs}_{start_timestr}')
-    Path(new_model_folder_name).mkdir(parents=True, exist_ok=True)
+        start_timestr = time.strftime("%Y%m%d-%H%M")
+        mcs = f'_{model_comment}' if model_comment is not None else ''
+        new_model_folder_name = os.path.join(MODEL_DIR, f'{JOKER_NET_BASE_NAME}{mcs}_{start_timestr}')
+        Path(new_model_folder_name).mkdir(parents=True, exist_ok=True)
     log.info(f'creating new empty model at {new_model_folder_name}')
     return model_type(), new_model_folder_name
 
@@ -595,7 +644,8 @@ def create_model(ask_for_comment=True):
 def measure_latency(model_folder=None):
     log.info('measuring CNN latency in loop')
     interpreter, input_details, output_details = load_tflite_model(model_folder)
-    img = np.random.randint(0, 255, (IMSIZE, IMSIZE, 1))
+    nchan=input_details[0]['shape'][3]
+    img = np.random.randint(0, 255, (IMSIZE, IMSIZE, nchan))
     N = 100
     for i in range(1, N):
         with Timer('CNN latency') as timer:
@@ -689,6 +739,7 @@ def train(args=None):
     valid_batch_size = 128
     test_batch_size = 128
 
+    color_mode='grayscale' if model.input_shape[3]==1 else 'rgb'
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
         rotation_range=15,  # 图片随机转动的角度
@@ -706,7 +757,7 @@ def train(args=None):
         target_size=(IMSIZE, IMSIZE),
         batch_size=train_batch_size,
         class_mode='categorical',
-        color_mode='grayscale',
+        color_mode=color_mode,
         # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
         shuffle=True,
         interpolation='nearest',
@@ -719,7 +770,7 @@ def train(args=None):
         target_size=(IMSIZE, IMSIZE),
         batch_size=valid_batch_size,
         class_mode='categorical',
-        color_mode='grayscale',
+        color_mode=color_mode,
         shuffle=True,  # irrelevant for validtion
         interpolation='nearest',
     )
@@ -731,7 +782,7 @@ def train(args=None):
         target_size=(IMSIZE, IMSIZE),
         batch_size=test_batch_size,
         class_mode='categorical',
-        color_mode='grayscale',
+        color_mode=color_mode,
         shuffle=False,
         interpolation='nearest',
     )  # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
@@ -775,7 +826,7 @@ def train(args=None):
         log.info('starting training')
         epochs = 300
 
-        class_weight = {0: .8, 1: .2}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
+        class_weight = {0: .1, 1: .9}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
 
@@ -813,7 +864,6 @@ def train(args=None):
         log.info(f'saving tflite model as {tflite_model_path}')
         with open(tflite_model_path, 'wb') as f:
             f.write(tflite_model)
-        # end training part
 
     log.info('evaluating accuracy')
     # test_generator.reset()
@@ -842,7 +892,7 @@ def train(args=None):
     measure_latency(model_folder)
     elapsed_time_min = (time.time() - start_time) / 60
     if args.train:
-        log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {new_model_folder_name}.'
+        log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {model_folder}.'
                  f'\nSee {LOG_FILE} for logging output for this run.')
 
 

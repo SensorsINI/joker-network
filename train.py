@@ -4,14 +4,15 @@
 # see dataset_utils for methods to create the training split folders
 # author: Tobi Delbruck
 import argparse
+import datetime
 import glob
+import random
 import shutil
-from ctypes import pointer
 from pathlib import Path
 from random import random
 from shutil import copyfile
-from tkinter import filedialog
 from tkinter import *
+from tkinter import filedialog
 
 # uncomment lines to run on CPU
 # import os
@@ -19,25 +20,19 @@ from tkinter import *
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import PIL
 import tensorflow as tf
-import tensorflow.keras.backend as K
-# from alessandro: use keras from tensorflow, not from keras directly
-from h5py.h5fd import LOG
-from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
-from tensorflow.python.keras.models import Sequential, Model
-from tensorflow.python.keras.layers import Dense, Dropout, Activation, Flatten, GlobalAveragePooling2D
-from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
-from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.python.keras.models import load_model
-from sklearn.metrics import balanced_accuracy_score, confusion_matrix, plot_confusion_matrix
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import random
-from engineering_notation import EngNumber  as eng  # only from pip
 import tensorflow.python.keras
 from classification_models.keras import Classifiers
+from sklearn.metrics import balanced_accuracy_score, confusion_matrix
+# from alessandro: use keras from tensorflow, not from keras directly
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
+from tensorflow.python.keras.layers import Conv2D, MaxPooling2D, BatchNormalization
+from tensorflow.python.keras.layers import Dense, Dropout, Flatten, GlobalAveragePooling2D
+from tensorflow.python.keras.models import Sequential, Model
+from tensorflow.python.keras.models import load_model
+from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+from tqdm import tqdm
 
 from globals_and_utils import *
-import datetime
 
 INITIALIZE_MODEL_FROM_LATEST = True  # set True to initialize weights to latest saved model
 
@@ -136,7 +131,8 @@ def make_training_set():
             for s in seg_range:
                 print(f'{segs[s]} ', end='')
                 line += 1
-                if line % nperline == 0: print('')
+                if line % nperline == 0:
+                    print('')
                 start = segs[s] * (NUM_FRAMES_PER_SEGMENT + NUM_FRAMES_GAP_BETWEEN_SEGMENTS)
                 end = start + NUM_FRAMES_PER_SEGMENT
                 nums = list(range(start, end))
@@ -185,7 +181,6 @@ def riffle_test(args):
     class GetOutOfLoop(Exception):
         pass
 
-    start_time = time.time()
     start_timestr = time.strftime("%Y%m%d-%H%M")
     log.info('evaluating riffle')
     log.info(f'Tensorflow version {tf.version.VERSION}')
@@ -223,15 +218,14 @@ def riffle_test(args):
         os.chdir(folder)
         ls = os.listdir()
         ls = sorted(ls)
-        nfiles=len(ls)
-        first = True
+        nfiles = len(ls)
         mode = 'fwd'
         idx = -1
 
         try:
             with tqdm(total=nfiles, file=sys.stdout) as pbar:
                 while True:
-                    idx = idx + (1 if mode=='fwd' or mode=='step-fwd' else -1)
+                    idx = idx + (1 if mode == 'fwd' or mode == 'step-fwd' else -1)
                     pbar.update(idx)
                     if idx >= len(ls):
                         raise GetOutOfLoop
@@ -240,7 +234,7 @@ def riffle_test(args):
                         continue
                     try:
                         try:
-                            color_mode='grayscale' if input_details[0]['shape'][3]==1 else 'rgb'
+                            color_mode = 'grayscale' if input_details[0]['shape'][3] == 1 else 'rgb'
                             img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode=color_mode)
                         except PIL.UnidentifiedImageError as e:
                             log.warning(f'{e}: {image_file_path} is not an image?')
@@ -262,7 +256,7 @@ def riffle_test(args):
                             # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                             cv2.imshow('frame', img_arr)
-                        if joker_prob < threshold_pause_prob and mode=='fwd':
+                        if joker_prob < threshold_pause_prob and mode == 'fwd':
                             k = cv2.waitKey(15)
                         else:
                             k = cv2.waitKey(0)  # wait longer for joker detected
@@ -273,11 +267,11 @@ def riffle_test(args):
                             nonjokers_list_file.close()
                             log.info(f'jokers saved as {os.path.realpath(jokers_list_file.name)} and nonjokers saved in {os.path.realpath(nonjokers_list_file.name)}')
                             quit()
-                        elif k==ord('.'):
-                            mode='step-fwd'
+                        elif k == ord('.'):
+                            mode = 'step-fwd'
                             continue
-                        elif k==ord(','):
-                            mode='step-back'
+                        elif k == ord(','):
+                            mode = 'step-back'
                             continue
                         elif k == ord('\n') or k == ord('\r'):  # enter/newline/cr
                             os.chdir('..')
@@ -299,7 +293,7 @@ def riffle_test(args):
                                 log.error(f'could not move {image_file_path}->{NONJOKERS_FOLDER}: caught {e}')
 
                         elif k == 255 or k == ord(' '):  # no key or space
-                            mode='fwd'
+                            mode = 'fwd'
                             continue
                     except Exception as e:
                         log.error(f'caught {e} for file {image_file_path}')
@@ -311,12 +305,11 @@ def riffle_test(args):
     jokers_list_file.close()
     nonjokers_list_file.close()
 
+
 def test_random_samples():
     """ Runs test on test folder to evaluate accuracy on example images
     """
-    import glob
     import tensorflow as tf
-    from tensorflow.python.keras.models import load_model
     import cv2
     log.info('evaluating test set accuracy')
     log.info(f'Tensorflow version {tf.version.VERSION}')
@@ -401,8 +394,9 @@ def classify_joker_img(img: np.array, interpreter, input_details, output_details
 
     :returns: is_joker (True/False), joker_probability (0-1), prediction[2]=[nonjoker, joker]
     """
-    nchan=input_details[0]['shape'][3]
-    inp=(1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32) # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
+
+    nchan = input_details[0]['shape'][3]
+    inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32)  # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
     interpreter.set_tensor(input_details[0]['index'], inp)
     interpreter.invoke()
     pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
@@ -439,7 +433,7 @@ def load_tflite_model(folder=None):
 
     :raises: FileNotFoundError if TFLITE_FILE_NAME is not found in folder
     """
-    tflite_model_path=None
+    tflite_model_path = None
     if folder is None:
         existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
         if len(existing_models) > 0:
@@ -451,7 +445,7 @@ def load_tflite_model(folder=None):
             raise FileNotFoundError(f'no models found in {MODEL_DIR}')
 
     else:
-        tflite_model_path=os.path.join(folder, TFLITE_FILE_NAME)
+        tflite_model_path = os.path.join(folder, TFLITE_FILE_NAME)
         log.info('loading tflite CNN model {}'.format(tflite_model_path))
     # model = load_model(MODEL)
     # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
@@ -468,7 +462,6 @@ def load_tflite_model(folder=None):
 def measure_flops():
     log.info('measuring Op/frame for CNN')
     from flopco_keras import FlopCoKeras
-    import tensorflow as tf
 
     model = create_model(ask_for_comment=False)  # load_latest_model() #tf.keras.applications.ResNet101()
     flopco = FlopCoKeras(model)
@@ -570,22 +563,22 @@ def create_model_resnet():
 
 
 def create_model_mobilenet():
-    ''' Creates MobileNet model
+    """ Creates MobileNet model
     https://keras.io/api/applications/mobilenet/
 
-    '''
+    """
     weights = 'imagenet'
-    alpha = .25 # 0.25 is smallest version with imagenet weights
+    alpha = .25  # 0.25 is smallest version with imagenet weights
     depth_multiplier = int(1)
-    dropout = 0.001 # default is .001
-    include_top=False # set false to specify our own FC layers
-    fully_connected_layers=(128,128) # our FC layers
-    num_input_channels=3 if weights=='imagenet' else 1
-    pooling='avg' # default is avg for mobilenet
-    freeze=True # set true to freeze imagenet feature weights
+    dropout = 0.001  # default is .001
+    include_top = False  # set false to specify our own FC layers
+    fully_connected_layers = (128, 128)  # our FC layers
+    num_input_channels = 3 if weights == 'imagenet' else 1
+    pooling = 'avg'  # default is avg for mobilenet
+    freeze = True  # set true to freeze imagenet feature weights
     log.info(f'creating MobileNet with weights={weights} alpha={alpha} depth_multiplier={depth_multiplier} dropout={dropout} fully_connected_layers={fully_connected_layers} pooling={pooling} frozen_imagenet_layers={freeze}')
     model = tf.keras.applications.MobileNet(
-        input_shape=(IMSIZE, IMSIZE, num_input_channels), # must be 3 channel input if using imagenet weights
+        input_shape=(IMSIZE, IMSIZE, num_input_channels),  # must be 3 channel input if using imagenet weights
         weights=weights,
         include_top=include_top,
         alpha=alpha,
@@ -596,26 +589,22 @@ def create_model_mobilenet():
         classes=2,
         classifier_activation="softmax",
     )
-    model.trainable=not freeze
+    model.trainable = not freeze
     # add preprocessing for imagenet input
     i = tf.keras.layers.Input([IMSIZE, IMSIZE, num_input_channels], dtype=tf.uint8)
     x = tf.cast(i, tf.float32)
-    x = tf.keras.applications.mobilenet.preprocess_input(
-
-
-        x)
-    x = model()(x)
+    x = tf.keras.applications.mobilenet.preprocess_input(x)
     # define model to include input
-    model = tf.keras.Model(inputs=[i], outputs=[x])
+    model = Model(inputs=[i], outputs=[x])
 
-    if not include_top: # if we add our own FC output, then we need to wrap it with input layers
+    if not include_top:  # if we add our own FC output, then we need to wrap it with input layers
         # x=Flatten()(model.output)
-        x=GlobalAveragePooling2D()(model)
+        x = GlobalAveragePooling2D()(model.output)
         for n in fully_connected_layers:
-            x=Dense(n, activation='relu')(x)  # we add dense layers so that the model can learn more complex functions and classify for better results.
+            x = Dense(n, activation='relu')(x)  # we add dense layers so that the model can learn more complex functions and classify for better results.
         # Output Layer
-        output=Dense(2, activation='softmax', name='output')(x)
-        final=Model(inputs=model.inputs, outputs=output, name='joker-mobilenet')
+        output = Dense(2, activation='softmax', name='output')(x)
+        final = Model(inputs=model.inputs, outputs=output, name='joker-mobilenet')
         return final
     return model
 
@@ -629,8 +618,7 @@ def create_model(ask_for_comment=True):
     :returns: model, model_folder_path
     """
     model_type = create_model_mobilenet
-    new_model_folder_name=None
-    model_comment = None
+    new_model_folder_name = None
     if ask_for_comment:
         model_comment = input('short model comment?')
         model_comment.replace(' ', '_')
@@ -646,7 +634,7 @@ def create_model(ask_for_comment=True):
 def measure_latency(model_folder=None):
     log.info('measuring CNN latency in loop')
     interpreter, input_details, output_details = load_tflite_model(model_folder)
-    nchan=input_details[0]['shape'][3]
+    nchan = input_details[0]['shape'][3]
     img = np.random.randint(0, 255, (IMSIZE, IMSIZE, nchan))
     N = 100
     for i in range(1, N):
@@ -676,10 +664,6 @@ class SGDLearningRateTracker(Callback):
 
 
 def train(args=None):
-    model_name = None
-    tflite_model_name = None
-    model_comment = None  # for new models, string to append to model name
-
     start_time = time.time()
     start_timestr = time.strftime("%Y%m%d-%H%M")
 
@@ -737,11 +721,11 @@ def train(args=None):
     log.warning('test warning')
     log.error('test error')
 
-    train_batch_size = 16
-    valid_batch_size = 128
-    test_batch_size = 128
+    train_batch_size = 64
+    valid_batch_size = 64
+    test_batch_size = 64
 
-    color_mode='grayscale' if model.input_shape[3]==1 else 'rgb'
+    color_mode = 'grayscale' if model.input_shape[3] == 1 else 'rgb'
     train_datagen = ImageDataGenerator(  # 实例化
         rescale=1. / 255,  # todo check this
         rotation_range=15,  # 图片随机转动的角度
@@ -828,7 +812,7 @@ def train(args=None):
         log.info('starting training')
         epochs = 300
 
-        class_weight = {0: .1, 1: .9}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
+        class_weight = {0: .5, 1: .5}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
 

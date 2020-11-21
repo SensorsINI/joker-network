@@ -24,7 +24,7 @@ Test environment:
  **Make a conda environment**, activate it, then in it install the libraries.
  
 ```
-pip install opencv-python tensorflow keras pyserial pyaer engineering_notation matplotlib sklearn flopco-keras
+pip install opencv-python tensorflow keras pyserial pyaer engineering_notation matplotlib sklearn flopco-keras psutil
 ```
 or
 ```

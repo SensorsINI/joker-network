@@ -10,3 +10,5 @@ sklearn
 flopco-keras # may need a fork and edit to line 14 of setup.py to change pip.req to pip.requirements
 torch
 engineeringformat
+psutil
+

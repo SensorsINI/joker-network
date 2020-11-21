@@ -600,9 +600,11 @@ def create_model_mobilenet():
     # add preprocessing for imagenet input
     i = tf.keras.layers.Input([IMSIZE, IMSIZE, num_input_channels], dtype=tf.uint8)
     x = tf.cast(i, tf.float32)
-    x = tf.keras.applications.mobilenet.preprocess_input(x)
-    core = tf.keras.applications.MobileNet()
-    x = core(x)
+    x = tf.keras.applications.mobilenet.preprocess_input(
+
+
+        x)
+    x = model()(x)
     # define model to include input
     model = tf.keras.Model(inputs=[i], outputs=[x])
 

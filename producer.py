@@ -14,9 +14,12 @@ import time
 import numpy.ma as ma
 import socket
 import numpy as np
+from tqdm import tqdm
+
 from globals_and_utils import *
 from engineering_notation import EngNumber  as eng # only from pip
 import argparse
+import psutil
 
 from pyaer.davis import DAVIS
 from pyaer import libcaer
@@ -101,13 +104,14 @@ def producer(args):
     time_last_frame_sent=time.time()
     frames_dropped_counter=0
     save_next_frame=not spacebar_records # if we don't supply the option, it will be False and we want to then save all frames
+    saved_events=[]
 
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
-        numpy_file = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
+        numpy_frame_rate_data_file_path = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
         while True:
 
-            with Timer('overall producer frame rate', numpy_file=numpy_file , show_hist=True) as timer_overall:
+            with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True) as timer_overall:
                 with Timer('accumulate DVS'):
                     events = None
                     while events is None or len(events)<args.num_events:
@@ -127,6 +131,15 @@ def producer(args):
                     continue # just collect another frame since it will be more timely
 
                 log.debug(f'after dropping {frames_dropped_counter} frames, got one after {dtMs:.1f}ms')
+                if args.numpy:
+                    if saved_events is None:
+                        saved_events = pol_events
+                    else:
+                        saved_events.append(events)
+                        # saved_events = np.vstack([saved_events, events])
+                        # if psutil.virtual_memory().available < 1e9:
+                        #     log.warning('available RAM too low, turning off numpy data saving')
+
                 frames_dropped_counter=0
                 with Timer('normalization'):
                     # if frame is None: # debug timing
@@ -177,7 +190,14 @@ def producer(args):
                                 save_next_frame=True
                             else:
                                 save_next_frame=not spacebar_records
-
+        if saved_events is not None and recording_folder is not None:
+            o=np.empty((0,5),dtype=np.float32)
+            for a in tqdm(saved_events,desc='converting events to numpy'):
+                o=np.vstack([o,a])
+            nevents=len(o)
+            data_path=os.path.join(recording_folder,f'events-{timestr}.npy')
+            log.info(f'saving {eng(nevents)} events to {data_path}')
+            np.save(data_path,o)
     except KeyboardInterrupt as e:
         log.info(f'got KeyboardInterrupt {e}')
         cleanup()
@@ -200,6 +220,9 @@ if __name__ == '__main__':
     parser.add_argument(
         "--spacebar_records", action='store_true',
         help="only record when spacebar pressed down")
+    parser.add_argument(
+        "--numpy", action='store_true',
+        help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
     args = parser.parse_args()
 
     producer(args)

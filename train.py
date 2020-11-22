@@ -6,10 +6,9 @@
 import argparse
 import datetime
 import glob
-import random
 import shutil
 from pathlib import Path
-from random import random
+import random
 from shutil import copyfile
 from tkinter import *
 from tkinter import filedialog
@@ -189,10 +188,11 @@ def riffle_test(args):
         print('select folder (go inside it to select it)\n'
               'q|x exits\n'
               'space plays\n'
-              'right forward\n'
-              'left backwards\n'
+              '. forward\n'
+              ', backwards\n'
               'j moves to joker folder\n'
               'n moves to nonjoker folder\n'
+              't toggles pausing at possible joker\n'
               'enter selects new playback folder\n'
               'h print help')
 
@@ -203,11 +203,30 @@ def riffle_test(args):
     jokers_list_file = open(os.path.join(LOG_DIR, f'joker-file-list-{start_timestr}.txt'), 'w')
     nonjokers_list_file = open(os.path.join(LOG_DIR, f'nonjoker-file-list-{start_timestr}.txt'), 'w')
 
+    def move_with_backup(src,dest):
+        if not os.path.isdir(dest):
+            raise Exception(f'destination {dest} should be a directory')
+        try:
+            shutil.move(src, dest)
+        except Exception as e:
+            idx=1
+            s=os.path.splitext(src)
+            base=s[0]
+            suf=s[-1]
+            while True:
+                newfilename=os.path.join(dest, f'{base}_{idx}{suf}')
+                if os.path.isfile(newfilename):
+                    idx+=1
+                    continue
+                shutil.move(src, newfilename)
+                log.info(f'moved {src}->{newfilename}')
+                break
+
     folder = os.path.join(SRC_DATA_FOLDER, '..')
     os.chdir(folder)
     print_help()
     cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('frame', 800, 400)
+    cv2.resizeWindow('frame', 800, 800)
     while True:
         root = Tk()
         root.withdraw()
@@ -220,6 +239,7 @@ def riffle_test(args):
         ls = sorted(ls)
         nfiles = len(ls)
         mode = 'fwd'
+        pause_at_possible_joker=True
         idx = -1
 
         try:
@@ -231,6 +251,9 @@ def riffle_test(args):
                         raise GetOutOfLoop
                     image_file_path = ls[idx]
                     if os.path.isdir(image_file_path):
+                        continue
+                    if not os.path.isfile(image_file_path):
+                        log.warning(f'{image_file_path} missing, continuing with next image')
                         continue
                     try:
                         try:
@@ -256,10 +279,10 @@ def riffle_test(args):
                             # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                             cv2.imshow('frame', img_arr)
-                        if joker_prob < threshold_pause_prob and mode == 'fwd':
-                            k = cv2.waitKey(15)
-                        else:
-                            k = cv2.waitKey(0)  # wait longer for joker detected
+                        d=15 # ms
+                        if (joker_prob > threshold_pause_prob and pause_at_possible_joker) or mode!='fwd':
+                            d=0
+                        k = cv2.waitKey(d)  # wait longer for joker detected
                         k = k & 0xff
                         if k == 27 or k == ord('q') or k == ord('x'):  # quit
                             cv2.destroyAllWindows()
@@ -278,17 +301,20 @@ def riffle_test(args):
                             raise GetOutOfLoop  # choose new folder
                         elif k == ord('h'):
                             print_help()
+                        elif k == ord('t'):
+                            pause_at_possible_joker = not pause_at_possible_joker
+                            print('pausing at possible jokers' if pause_at_possible_joker else 'not pausing for possible jokers')
                         elif k == ord('j'):
                             log.info(f'moving {image_file_path} to {JOKERS_FOLDER}')
                             try:
-                                shutil.move(image_file_path, JOKERS_FOLDER)
+                                move_with_backup(image_file_path, JOKERS_FOLDER)
                             except Exception as e:
                                 log.error(f'could not move {image_file_path}->{JOKERS_FOLDER}: caught {e}')
 
                         elif k == ord('n'):
                             log.info(f'moving {image_file_path} to {NONJOKERS_FOLDER}')
                             try:
-                                shutil.move(image_file_path, NONJOKERS_FOLDER)
+                                move_with_backup(image_file_path, NONJOKERS_FOLDER)
                             except Exception as e:
                                 log.error(f'could not move {image_file_path}->{NONJOKERS_FOLDER}: caught {e}')
 
@@ -381,22 +407,27 @@ def test_random_samples():
                 quit()
             cv2.destroyWindow(win_name)
             idx[c - 1] += 1
-            if idx[c - 1] >= len(ls[c - 1]): idx[c - 1] = 0
+            if idx[c - 1] >= len(ls[c - 1]):
+                idx[c - 1] = 0
 
 
-def classify_joker_img(img: np.array, interpreter, input_details, output_details):
+def classify_joker_img(img: np.array, interpreter, input_details, output_details, model:tf.keras.Model=None):
     """ Classify uint8 img
 
     :param img: input image as unit8 np.array
     :param interpreter: the TFLITE interpreter
     :param input_details: the input details of interpreter
     :param output_details: the output details of interpreter
+    :param model: optional Keras Model; determines preprocessing for some models
 
     :returns: is_joker (True/False), joker_probability (0-1), prediction[2]=[nonjoker, joker]
     """
-
     nchan = input_details[0]['shape'][3]
-    inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32)  # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
+    if model is not None and model.name=='mobilenet-roshambo':
+        img = tf.keras.applications.mobilenet.preprocess_input(img)
+        inp =np.reshape(img, [1, IMSIZE, IMSIZE, nchan])
+    else:
+        inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32)  # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
     interpreter.set_tensor(input_details[0]['index'], inp)
     interpreter.invoke()
     pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
@@ -567,15 +598,15 @@ def create_model_mobilenet():
     https://keras.io/api/applications/mobilenet/
 
     """
-    weights = 'imagenet'
+    weights = None # 'imagenet'
     alpha = .25  # 0.25 is smallest version with imagenet weights
     depth_multiplier = int(1)
     dropout = 0.001  # default is .001
-    include_top = False  # set false to specify our own FC layers
+    include_top = True  # set false to specify our own FC layers
     fully_connected_layers = (128, 128)  # our FC layers
     num_input_channels = 3 if weights == 'imagenet' else 1
     pooling = 'avg'  # default is avg for mobilenet
-    freeze = True  # set true to freeze imagenet feature weights
+    freeze = False  # set true to freeze imagenet feature weights
     log.info(f'creating MobileNet with weights={weights} alpha={alpha} depth_multiplier={depth_multiplier} dropout={dropout} fully_connected_layers={fully_connected_layers} pooling={pooling} frozen_imagenet_layers={freeze}')
     model = tf.keras.applications.MobileNet(
         input_shape=(IMSIZE, IMSIZE, num_input_channels),  # must be 3 channel input if using imagenet weights
@@ -590,12 +621,6 @@ def create_model_mobilenet():
         classifier_activation="softmax",
     )
     model.trainable = not freeze
-    # add preprocessing for imagenet input
-    i = tf.keras.layers.Input([IMSIZE, IMSIZE, num_input_channels], dtype=tf.uint8)
-    x = tf.cast(i, tf.float32)
-    x = tf.keras.applications.mobilenet.preprocess_input(x)
-    # define model to include input
-    model = Model(inputs=[i], outputs=[x])
 
     if not include_top:  # if we add our own FC output, then we need to wrap it with input layers
         # x=Flatten()(model.output)
@@ -606,6 +631,7 @@ def create_model_mobilenet():
         output = Dense(2, activation='softmax', name='output')(x)
         final = Model(inputs=model.inputs, outputs=output, name='joker-mobilenet')
         return final
+    model.summary(print_fn=log.info)
     return model
 
 

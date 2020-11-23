@@ -1,0 +1,883 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:upstream" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="BRANCH:master" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </select>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="3603c72d-a8e8-4b94-b43a-7b61c6bd4567" name="Default Changelist" comment="improved Timer to add print_timing_info method to Timer&#10;Changed make_training_dataset to take chunks of sequential frames and not just randomly-selected frames to try to avoid that training/validation set have overlapping frames that are nearly identical&#10;Changed CNN architecture">
+      <change beforePath="$PROJECT_DIR$/logs/accuracy-20201105-1635.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/training-20201105-1635.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="JupyterTrust" id="4f457821-8437-4ced-9af7-1243fccb4292" />
+  <component name="ProjectId" id="1dWnE8u9z5pnJ1qNzeTMC2O9gHA" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../../code.ini.uzh.ch" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings>
+        <option name="useSoftWraps" value="true" />
+      </console-settings>
+    </option>
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/models" />
+      <recent name="$PROJECT_DIR$/logs" />
+      <recent name="$PROJECT_DIR$/saved_models" />
+      <recent name="$PROJECT_DIR$/data" />
+      <recent name="F:\tobi\Dropbox (Personal)\GitHub\SensorsINI\joker-network\ArduinoControl" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="F:\tobi\Dropbox (Personal)\GitHub\SensorsINI\joker-network" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.riffle_test">
+    <configuration default="true" type="CompoundRunConfigurationType">
+      <toRun name="consumer ubuntu /dev/ttyUSB0" type="PythonConfigurationType" />
+      <toRun name="producer" type="PythonConfigurationType" />
+      <method v="2" />
+    </configuration>
+    <configuration name="measure CNN latency" type="PythonConfigurationType" factoryName="Python">
+      <module name="joker-network" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/train.py" />
+      <option name="PARAMETERS" value="--measure_latency" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="riffle_test" type="PythonConfigurationType" factoryName="Python">
+      <module name="joker-network" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/train.py" />
+      <option name="PARAMETERS" value="--riffle_test" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test accuracy" type="PythonConfigurationType" factoryName="Python">
+      <module name="joker-network" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/train.py" />
+      <option name="PARAMETERS" value="--test_accuracy" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Compound.trixsy" />
+      <item itemvalue="Python.producer" />
+      <item itemvalue="Python.consumer" />
+      <item itemvalue="Python.record jokers" />
+      <item itemvalue="Python.record nonjokers" />
+      <item itemvalue="Python.train" />
+      <item itemvalue="Python.measure flops/frame" />
+      <item itemvalue="Python.consumer with mac USB port" />
+      <item itemvalue="Python.test random samples" />
+      <item itemvalue="Python.make training dataset" />
+      <item itemvalue="Python.clean up image folder" />
+      <item itemvalue="Python.measure CNN latency" />
+      <item itemvalue="Python.riffle_test" />
+      <item itemvalue="Python.test accuracy" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="3603c72d-a8e8-4b94-b43a-7b61c6bd4567" name="Default Changelist" comment="" />
+      <created>1592549602643</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1592549602643</updated>
+      <workItem from="1592549603868" duration="1828000" />
+      <workItem from="1601538703093" duration="484000" />
+      <workItem from="1601625131198" duration="4596000" />
+      <workItem from="1601636680055" duration="3882000" />
+      <workItem from="1601649163538" duration="21000" />
+      <workItem from="1602141898544" duration="1408000" />
+      <workItem from="1602352753082" duration="1624000" />
+      <workItem from="1602399479931" duration="2963000" />
+      <workItem from="1602570196945" duration="1255000" />
+      <workItem from="1602574436666" duration="2808000" />
+      <workItem from="1602599170275" duration="1008000" />
+      <workItem from="1602602070559" duration="335000" />
+      <workItem from="1602670688023" duration="1204000" />
+      <workItem from="1602703987011" duration="675000" />
+      <workItem from="1602704795945" duration="714000" />
+      <workItem from="1602705653989" duration="585000" />
+      <workItem from="1602739871900" duration="21000" />
+      <workItem from="1602741761542" duration="1543000" />
+      <workItem from="1602754039367" duration="14148000" />
+      <workItem from="1602835145258" duration="24000" />
+      <workItem from="1602912983432" duration="1960000" />
+      <workItem from="1602916622509" duration="14556000" />
+      <workItem from="1603035764932" duration="6267000" />
+      <workItem from="1603189323785" duration="4276000" />
+      <workItem from="1603197302195" duration="632000" />
+      <workItem from="1603262553014" duration="4385000" />
+      <workItem from="1603283904384" duration="2631000" />
+      <workItem from="1603431339224" duration="1861000" />
+      <workItem from="1604162470416" duration="44665000" />
+      <workItem from="1604471841615" duration="56712000" />
+      <workItem from="1604987311333" duration="1312000" />
+    </task>
+    <task id="LOCAL-00001" summary="clean up consumerudp.py &#10;make pycharm files&#10;fixed requirements.txt to work correctly">
+      <created>1601634079741</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1601634079741</updated>
+    </task>
+    <task id="LOCAL-00002" summary="clean up consumerudp.py &#10;make pycharm files&#10;fixed requirements.txt to work correctly">
+      <created>1601636748414</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1601636748414</updated>
+    </task>
+    <task id="LOCAL-00003" summary="tried to clean up DVS framing of producer, but needs testing on linux">
+      <created>1601644491399</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1601644491399</updated>
+    </task>
+    <task id="LOCAL-00004" summary="added pycharm settings">
+      <created>1602142105451</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1602142105451</updated>
+    </task>
+    <task id="LOCAL-00005" summary="new trixie-firmware.ino project, new hardware board setup with ultracap array and new bigger solenoid.">
+      <created>1602512235153</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1602512235153</updated>
+    </task>
+    <task id="LOCAL-00006" summary="added schematic of electronics and datasheet of NPN bipolar switch for MOSFET gate&#10;- added watchdog timeer to firmware, heartbeat, and inverted switch sign for activating finger">
+      <created>1602570625727</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1602570625727</updated>
+    </task>
+    <task id="LOCAL-00007" summary="fixed sign of output for finger">
+      <created>1602570794782</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1602570794782</updated>
+    </task>
+    <task id="LOCAL-00008" summary="fixed opencv pip target to be opencv-python">
+      <created>1602574850290</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1602574850290</updated>
+    </task>
+    <task id="LOCAL-00009" summary="fixed syntax bugs">
+      <created>1602574865141</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1602574865141</updated>
+    </task>
+    <task id="LOCAL-00010" summary="changed to scheme using NPN bipolar to switch NMOSFET gate to VFING supply voltage. back to pin 3 which supports analogWrite PWM output">
+      <created>1602597630071</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1602597630071</updated>
+    </task>
+    <task id="LOCAL-00011" summary="running now, but inference very slow on GTX980 for unknown reason even with TF 2.3.1 and all drivers/etc updated.">
+      <created>1602677293422</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1602677293422</updated>
+    </task>
+    <task id="LOCAL-00012" summary="improved timers reporting, compiling model (makes no real difference), improved README.md, using pickle to send frames,">
+      <created>1602758703199</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1602758703199</updated>
+    </task>
+    <task id="LOCAL-00013" summary="pushing for yuhuang">
+      <created>1602773076833</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1602773076833</updated>
+    </task>
+    <task id="LOCAL-00014" summary="improved output, changed camera settings for noise filtering, simplified processing of DVS events, moved datasheets to folder">
+      <created>1602833087494</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1602833087494</updated>
+    </task>
+    <task id="LOCAL-00015" summary="using tflite, inference time goes down by factor of more than 10X!!!&#10;&#10;run CNN n=2379: 4.09ms +/- 841.06us (median 3.96ms, min 2.59ms max 9.54ms)">
+      <created>1602851816828</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1602851816828</updated>
+    </task>
+    <task id="LOCAL-00016" summary="added notes, increased finger out time to 2s">
+      <created>1602852338334</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1602852338334</updated>
+    </task>
+    <task id="LOCAL-00017" summary="added saving of images for jokers and nonjokers to augment dataset with more samples. removed timers.py and put in utils file.">
+      <created>1602920155649</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1602920155649</updated>
+    </task>
+    <task id="LOCAL-00018" summary="latest tweaks, fixed output image scaling to get gray scale, saving only every small random nonjoker image to make samples more broad, make consumer loop continuous with state through joker detection.&#10;saved data in README.md about processsing rate">
+      <created>1603033911300</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1603033911300</updated>
+    </task>
+    <task id="LOCAL-00019" summary="added compound launcher target to start everything&#10;added more solenoid aliexpress pages of new solenoids ordered.">
+      <created>1603033983390</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1603033983390</updated>
+    </task>
+    <task id="LOCAL-00020" summary="fixed logic for storing EEPROM values of pulse time and duty cycle&#10;increased number of nonjoker stored images per joker">
+      <created>1603036693368</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1603036693369</updated>
+    </task>
+    <task id="LOCAL-00021" summary="Everything at time of first youtube video">
+      <created>1603261916535</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1603261916535</updated>
+    </task>
+    <task id="LOCAL-00022" summary="adde libcaer link">
+      <created>1603262589086</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1603262589086</updated>
+    </task>
+    <task id="LOCAL-00023" summary="update README.md">
+      <created>1603262786146</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1603262786146</updated>
+    </task>
+    <task id="LOCAL-00024" summary="update README.md">
+      <created>1603262941822</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1603262941822</updated>
+    </task>
+    <task id="LOCAL-00025" summary="update README.md">
+      <created>1603263089955</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1603263089955</updated>
+    </task>
+    <task id="LOCAL-00026" summary="add some notes and laser cutter plan for finger-laser-cutter-plan-1.svg">
+      <created>1603263153891</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1603263153891</updated>
+    </task>
+    <task id="LOCAL-00027" summary="latest producer reduces frame latency to around 1ms by using max packet interval option of libcaer&#10;cleaned up training code.&#10;renamed firmware for typo in naming.&#10;added txt file for youtube info">
+      <created>1603436114666</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1603436114666</updated>
+    </task>
+    <task id="LOCAL-00028" summary="latest training, achieves test set accuracy about 95%">
+      <created>1603523636351</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1603523636351</updated>
+    </task>
+    <task id="LOCAL-00029" summary="added datagram message counter to detect dropped datagrams in consumer.py&#10;consumer now empties the recieve buffer to use latest datagram instead of the first one, to reduce latency to latest DVS output">
+      <created>1603525658717</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1603525658717</updated>
+    </task>
+    <task id="LOCAL-00030" summary="added method to show random test samples with opencv along with correct/incorrect decisions">
+      <created>1603541629773</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1603541629773</updated>
+    </task>
+    <task id="LOCAL-00031" summary="fixed script to split training data&#10;added --record option to producer to just record new data&#10;producer limits rate at which it sends frames to consumer &#10;consumer attempts to empty the UDP buffer to get very latest frame&#10;train.py records training.log file of logging output and measures test set accuracy">
+      <created>1603693095600</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1603693095600</updated>
+    </task>
+    <task id="LOCAL-00032" summary="fixed davis346 to increase ON threshold back to default (was set low to generate noise for remote testing of processing rate)">
+      <created>1603693176094</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1603693176094</updated>
+    </task>
+    <task id="LOCAL-00033" summary="added more datasheets">
+      <created>1603693225909</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1603693225909</updated>
+    </task>
+    <task id="LOCAL-00034" summary="added data about producer/consumer frame rates achieved">
+      <created>1603693539485</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1603693539485</updated>
+    </task>
+    <task id="LOCAL-00035" summary="fixed timing problems, works better now but not reliable yet">
+      <created>1603709769572</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1603709769572</updated>
+    </task>
+    <task id="LOCAL-00036" summary="fixed dataset_utils.py to run as a main with args">
+      <created>1603813669764</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1603813669764</updated>
+    </task>
+    <task id="LOCAL-00037" summary="fixed training to handle checkpoints better and to compute test statistics more&#10;fixed option to record data&#10;added command line args to dataset_utils.py">
+      <created>1603980367065</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1603980367065</updated>
+    </task>
+    <task id="LOCAL-00038" summary="improved display of random test samples&#10;added useful run targets">
+      <created>1604068643012</created>
+      <option name="number" value="00038" />
+      <option name="presentableId" value="LOCAL-00038" />
+      <option name="project" value="LOCAL" />
+      <updated>1604068643012</updated>
+    </task>
+    <task id="LOCAL-00039" summary="yes or no has timeout now to avoid starting training and nothing happening&#10;changed to categorical_accuracy to avoid any doubt about training&#10;Still have not resolved why real accuracy sucks though training is nearly perfect on validation set and in model.evaluate">
+      <created>1604214417477</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1604214417477</updated>
+    </task>
+    <task id="LOCAL-00040" summary="fixed timeout y/n function&#10;fixed logger to only have one output (but no colors)">
+      <created>1604215377627</created>
+      <option name="number" value="00040" />
+      <option name="presentableId" value="LOCAL-00040" />
+      <option name="project" value="LOCAL" />
+      <updated>1604215377627</updated>
+    </task>
+    <task id="LOCAL-00041" summary="finally test accuracy matches! Turned off shuffle in test gen.&#10;But random sample tests still suck. Something wrong with how images are fed to CNN.">
+      <created>1604259563605</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1604259563605</updated>
+    </task>
+    <task id="LOCAL-00042" summary="reworked consumer to load latest tflite model&#10;moved models to models/&#10;storing logs in logs/">
+      <created>1604383928110</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1604383928110</updated>
+    </task>
+    <task id="LOCAL-00043" summary="moved methods to train.py&#10;train stores log files and models in subfolders&#10;changed model.fit to move ROC towards less false positive jokers (and more missed jokers, i.e. more false positive nonjokers)">
+      <created>1604430536295</created>
+      <option name="number" value="00043" />
+      <option name="presentableId" value="LOCAL-00043" />
+      <option name="project" value="LOCAL" />
+      <updated>1604430536295</updated>
+    </task>
+    <task id="LOCAL-00044" summary="latest training code&#10;fixed folder cleanup code to preserve file mtime">
+      <created>1604506447753</created>
+      <option name="number" value="00044" />
+      <option name="presentableId" value="LOCAL-00044" />
+      <option name="project" value="LOCAL" />
+      <updated>1604506447753</updated>
+    </task>
+    <task id="LOCAL-00045" summary="latest train with better printout">
+      <created>1604559015147</created>
+      <option name="number" value="00045" />
+      <option name="presentableId" value="LOCAL-00045" />
+      <option name="project" value="LOCAL" />
+      <updated>1604559015147</updated>
+    </task>
+    <task id="LOCAL-00046" summary="changed to tensorflow keras, switch back to SGD but with momentum.&#10;fixed flop counter to work with patched flopco and print stats with EngFmt">
+      <created>1604590730553</created>
+      <option name="number" value="00046" />
+      <option name="presentableId" value="LOCAL-00046" />
+      <option name="project" value="LOCAL" />
+      <updated>1604590730553</updated>
+    </task>
+    <task id="LOCAL-00047" summary="added riffle test&#10;moved some code to methods for reuse">
+      <created>1604607536422</created>
+      <option name="number" value="00047" />
+      <option name="presentableId" value="LOCAL-00047" />
+      <option name="project" value="LOCAL" />
+      <updated>1604607536422</updated>
+    </task>
+    <option name="localTasksCounter" value="48" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.History.Properties">
+    <option name="COLUMN_ORDER">
+      <list>
+        <option value="0" />
+        <option value="2" />
+        <option value="3" />
+        <option value="1" />
+      </list>
+    </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="master" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+              <option name="COLUMN_WIDTH">
+                <map>
+                  <entry key="2" value="131" />
+                  <entry key="3" value="308" />
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="add some notes and laser cutter plan for finger-laser-cutter-plan-1.svg" />
+    <MESSAGE value="added timing histograms" />
+    <MESSAGE value="latest version with limited DVS frame rate rendering and unique data file naming (not yet tested)" />
+    <MESSAGE value="latest producer reduces frame latency to around 1ms by using max packet interval option of libcaer&#10;cleaned up training code.&#10;renamed firmware for typo in naming.&#10;added txt file for youtube info" />
+    <MESSAGE value="latest training, achieves test set accuracy about 95%" />
+    <MESSAGE value="added datagram message counter to detect dropped datagrams in consumer.py&#10;consumer now empties the recieve buffer to use latest datagram instead of the first one, to reduce latency to latest DVS output" />
+    <MESSAGE value="added method to show random test samples with opencv along with correct/incorrect decisions" />
+    <MESSAGE value="fixed script to split training data&#10;added --record option to producer to just record new data&#10;producer limits rate at which it sends frames to consumer &#10;consumer attempts to empty the UDP buffer to get very latest frame&#10;train.py records training.log file of logging output and measures test set accuracy" />
+    <MESSAGE value="fixed davis346 to increase ON threshold back to default (was set low to generate noise for remote testing of processing rate)" />
+    <MESSAGE value="added more datasheets" />
+    <MESSAGE value="added data about producer/consumer frame rates achieved" />
+    <MESSAGE value="fixed timing problems, works better now but not reliable yet" />
+    <MESSAGE value="fixed dataset_utils.py to run as a main with args" />
+    <MESSAGE value="fixed training to handle checkpoints better and to compute test statistics more&#10;fixed option to record data&#10;added command line args to dataset_utils.py" />
+    <MESSAGE value="improved display of random test samples&#10;added useful run targets" />
+    <MESSAGE value="yes or no has timeout now to avoid starting training and nothing happening&#10;changed to categorical_accuracy to avoid any doubt about training&#10;Still have not resolved why real accuracy sucks though training is nearly perfect on validation set and in model.evaluate" />
+    <MESSAGE value="fixed timeout y/n function&#10;fixed logger to only have one output (but no colors)" />
+    <MESSAGE value="finally test accuracy matches! Turned off shuffle in test gen.&#10;But random sample tests still suck. Something wrong with how images are fed to CNN." />
+    <MESSAGE value="reworked consumer to load latest tflite model&#10;moved models to models/&#10;storing logs in logs/" />
+    <MESSAGE value="moved methods to train.py&#10;train stores log files and models in subfolders&#10;changed model.fit to move ROC towards less false positive jokers (and more missed jokers, i.e. more false positive nonjokers)" />
+    <MESSAGE value="latest training code&#10;fixed folder cleanup code to preserve file mtime" />
+    <MESSAGE value="latest train with better printout" />
+    <MESSAGE value="changed to tensorflow keras, switch back to SGD but with momentum.&#10;fixed flop counter to work with patched flopco and print stats with EngFmt" />
+    <MESSAGE value="added riffle test&#10;moved some code to methods for reuse" />
+    <MESSAGE value="improved Timer to add print_timing_info method to Timer&#10;Changed make_training_dataset to take chunks of sequential frames and not just randomly-selected frames to try to avoid that training/validation set have overlapping frames that are nearly identical&#10;Changed CNN architecture" />
+    <option name="LAST_COMMIT_MESSAGE" value="improved Timer to add print_timing_info method to Timer&#10;Changed make_training_dataset to take chunks of sequential frames and not just randomly-selected frames to try to avoid that training/validation set have overlapping frames that are nearly identical&#10;Changed CNN architecture" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="2553" y="379" key="#Inspections" timestamp="1601625906373">
+      <screen x="0" y="0" width="5120" height="1400" />
+    </state>
+    <state x="2553" y="379" key="#Inspections/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601625906373" />
+    <state x="515" y="365" width="2013" height="679" key="#Log_Highlighting_(ideolog)" timestamp="1604229254908">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="515" y="308" width="706" height="460" key="#Log_Highlighting_(ideolog)/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604210005883" />
+    <state x="515" y="365" width="2013" height="679" key="#Log_Highlighting_(ideolog)/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604229254908" />
+    <state x="1609" y="181" width="1110" height="784" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1604647687662">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="421" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604429292094" />
+    <state x="1609" y="181" width="1110" height="784" key="#com.intellij.execution.impl.EditConfigurationsDialog/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604647687662" />
+    <state x="-1037" y="622" width="666" height="613" key="#com.intellij.execution.impl.EditConfigurationsDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@-1920.251.1920.1160" timestamp="1602142006118" />
+    <state x="2354" y="448" width="1092" height="739" key="#com.intellij.execution.impl.EditConfigurationsDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601627183315" />
+    <state x="1680" y="390" width="669" height="329" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1604382430147">
+      <screen x="67" y="27" width="3373" height="1173" />
+    </state>
+    <state x="1680" y="390" width="669" height="329" key="#com.intellij.fileTypes.FileTypeChooser/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604382430147" />
+    <state x="1439" y="464" width="603" height="396" key="#com.intellij.fileTypes.FileTypeChooser/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1603429053379" />
+    <state x="-1280" y="545" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1603283829637">
+      <screen x="-1920" y="230" width="1920" height="1160" />
+    </state>
+    <state x="-1280" y="545" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/7040.363.1536.832/0.0.5120.1400/-1920.230.1920.1160/5120.262.1920.1160@-1920.230.1920.1160" timestamp="1603283829637" />
+    <state x="1224" y="412" width="524" height="502" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1604319994969">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="588" y="303" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1714.1113@0.0.1714.1113" timestamp="1602914201249" />
+    <state x="1224" y="412" width="524" height="502" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604319994969" />
+    <state x="1452" y="679" width="546" height="217" key="#com.jetbrains.python.refactoring.move.PyMoveModuleMembersDialog" timestamp="1604581942718">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="1452" y="679" width="546" height="217" key="#com.jetbrains.python.refactoring.move.PyMoveModuleMembersDialog/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604581942718" />
+    <state x="1511" y="476" key="#xdebugger.evaluate" timestamp="1604657876389">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="760" y="352" key="#xdebugger.evaluate/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604269934484" />
+    <state x="1511" y="476" key="#xdebugger.evaluate/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604657876389" />
+    <state x="181" y="93" width="1499" height="957" key="DiffContextDialog" timestamp="1603610722515">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="181" y="93" width="1499" height="957" key="DiffContextDialog/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1603610722515" />
+    <state x="559" y="129" width="2274" height="1142" key="DiffContextDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601635813572" />
+    <state x="1787" y="437" width="495" height="484" key="FileChooserDialogImpl" timestamp="1604999945098">
+      <screen x="0" y="0" width="5120" height="1400" />
+    </state>
+    <state x="1244" y="393" key="FileChooserDialogImpl/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1602683555589" />
+    <state x="1244" y="468" width="495" height="484" key="FileChooserDialogImpl/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604559867924" />
+    <state x="1787" y="437" key="FileChooserDialogImpl/7040.362.1536.832/0.0.5120.1400/-1920.230.1920.1160/5120.261.1920.1160@0.0.5120.1400" timestamp="1604999945098" />
+    <state x="1787" y="437" key="FileChooserDialogImpl/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601626042146" />
+    <state width="3327" height="604" key="GridCell.Tab.0.bottom" timestamp="1604773605094">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state width="1567" height="418" key="GridCell.Tab.0.bottom/67.27.1613.1023/3440.0.1920.1200@67.27.1613.1023" timestamp="1604093502261" />
+    <state width="1807" height="378" key="GridCell.Tab.0.bottom/67.27.1853.1173/3440.0.1920.1200@67.27.1853.1173" timestamp="1604595177739" />
+    <state width="1567" height="285" key="GridCell.Tab.0.bottom/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604731495005" />
+    <state width="1660" height="389" key="GridCell.Tab.0.bottom/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1604586015918" />
+    <state width="3327" height="604" key="GridCell.Tab.0.bottom/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604773605094" />
+    <state width="792" height="412" key="GridCell.Tab.0.bottom/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635514" />
+    <state width="956" height="328" key="GridCell.Tab.0.bottom/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1602683793142" />
+    <state width="3327" height="604" key="GridCell.Tab.0.center" timestamp="1604773605093">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state width="1567" height="418" key="GridCell.Tab.0.center/67.27.1613.1023/3440.0.1920.1200@67.27.1613.1023" timestamp="1604093502261" />
+    <state width="1807" height="378" key="GridCell.Tab.0.center/67.27.1853.1173/3440.0.1920.1200@67.27.1853.1173" timestamp="1604595177739" />
+    <state width="1567" height="285" key="GridCell.Tab.0.center/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604731495005" />
+    <state width="1660" height="389" key="GridCell.Tab.0.center/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1604586015918" />
+    <state width="3327" height="604" key="GridCell.Tab.0.center/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604773605093" />
+    <state width="792" height="412" key="GridCell.Tab.0.center/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635513" />
+    <state width="956" height="328" key="GridCell.Tab.0.center/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1602683793142" />
+    <state width="3327" height="604" key="GridCell.Tab.0.left" timestamp="1604773605093">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state width="1567" height="418" key="GridCell.Tab.0.left/67.27.1613.1023/3440.0.1920.1200@67.27.1613.1023" timestamp="1604093502261" />
+    <state width="1807" height="378" key="GridCell.Tab.0.left/67.27.1853.1173/3440.0.1920.1200@67.27.1853.1173" timestamp="1604595177738" />
+    <state width="1567" height="285" key="GridCell.Tab.0.left/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604731495005" />
+    <state width="1660" height="389" key="GridCell.Tab.0.left/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1604586015917" />
+    <state width="3327" height="604" key="GridCell.Tab.0.left/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604773605093" />
+    <state width="792" height="412" key="GridCell.Tab.0.left/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635513" />
+    <state width="956" height="328" key="GridCell.Tab.0.left/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1602683793142" />
+    <state width="3327" height="604" key="GridCell.Tab.0.right" timestamp="1604773605094">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state width="1567" height="418" key="GridCell.Tab.0.right/67.27.1613.1023/3440.0.1920.1200@67.27.1613.1023" timestamp="1604093502261" />
+    <state width="1807" height="378" key="GridCell.Tab.0.right/67.27.1853.1173/3440.0.1920.1200@67.27.1853.1173" timestamp="1604595177739" />
+    <state width="1567" height="285" key="GridCell.Tab.0.right/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604731495005" />
+    <state width="1660" height="389" key="GridCell.Tab.0.right/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1604586015918" />
+    <state width="3327" height="604" key="GridCell.Tab.0.right/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604773605094" />
+    <state width="792" height="412" key="GridCell.Tab.0.right/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635513" />
+    <state width="956" height="328" key="GridCell.Tab.0.right/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1602683793142" />
+    <state width="1678" height="381" key="GridCell.Tab.1.bottom" timestamp="1604692252290">
+      <screen x="67" y="27" width="3373" height="1173" />
+    </state>
+    <state width="1678" height="381" key="GridCell.Tab.1.bottom/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604692252290" />
+    <state width="1981" height="389" key="GridCell.Tab.1.bottom/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1602916593581" />
+    <state width="3327" height="382" key="GridCell.Tab.1.bottom/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604658623993" />
+    <state width="792" height="412" key="GridCell.Tab.1.bottom/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635514" />
+    <state width="1386" height="465" key="GridCell.Tab.1.bottom/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636645889" />
+    <state width="1678" height="381" key="GridCell.Tab.1.center" timestamp="1604692252290">
+      <screen x="67" y="27" width="3373" height="1173" />
+    </state>
+    <state width="1678" height="381" key="GridCell.Tab.1.center/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604692252290" />
+    <state width="1981" height="389" key="GridCell.Tab.1.center/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1602916593581" />
+    <state width="3327" height="382" key="GridCell.Tab.1.center/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604658623993" />
+    <state width="792" height="412" key="GridCell.Tab.1.center/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635514" />
+    <state width="1386" height="465" key="GridCell.Tab.1.center/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636645889" />
+    <state width="1678" height="381" key="GridCell.Tab.1.left" timestamp="1604692252290">
+      <screen x="67" y="27" width="3373" height="1173" />
+    </state>
+    <state width="1678" height="381" key="GridCell.Tab.1.left/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604692252290" />
+    <state width="1981" height="389" key="GridCell.Tab.1.left/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1602916593581" />
+    <state width="3327" height="382" key="GridCell.Tab.1.left/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604658623993" />
+    <state width="792" height="412" key="GridCell.Tab.1.left/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635514" />
+    <state width="1386" height="465" key="GridCell.Tab.1.left/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636645889" />
+    <state width="1678" height="381" key="GridCell.Tab.1.right" timestamp="1604692252290">
+      <screen x="67" y="27" width="3373" height="1173" />
+    </state>
+    <state width="1678" height="381" key="GridCell.Tab.1.right/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604692252290" />
+    <state width="1981" height="389" key="GridCell.Tab.1.right/67.27.3373.1413/3440.0.1920.1200@3440.0.1920.1200" timestamp="1602916593581" />
+    <state width="3327" height="382" key="GridCell.Tab.1.right/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604658623993" />
+    <state width="792" height="412" key="GridCell.Tab.1.right/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644635514" />
+    <state width="1386" height="465" key="GridCell.Tab.1.right/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636645889" />
+    <state x="0" y="122" key="MergeDialog" timestamp="1601634172064">
+      <screen x="0" y="0" width="5120" height="1400" />
+    </state>
+    <state x="0" y="122" key="MergeDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601634172064" />
+    <state x="1334" y="461" key="MultipleFileMergeDialog" timestamp="1601634172074">
+      <screen x="0" y="0" width="5120" height="1400" />
+    </state>
+    <state x="1334" y="461" key="MultipleFileMergeDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601634172074" />
+    <state x="1448" y="402" key="RollbackChangesDialog" timestamp="1601635978609">
+      <screen x="0" y="0" width="5120" height="1400" />
+    </state>
+    <state x="1448" y="402" key="RollbackChangesDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601635978609" />
+    <state x="1061" y="372" key="SettingsEditor" timestamp="1604559891782">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="505" y="272" key="SettingsEditor/0.0.1714.1113@0.0.1714.1113" timestamp="1602913292963" />
+    <state x="783" y="184" key="SettingsEditor/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1602683612024" />
+    <state x="1061" y="372" key="SettingsEditor/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604559891782" />
+    <state x="-1354" y="534" key="SettingsEditor/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@-1920.251.1920.1160" timestamp="1602141917401" />
+    <state x="1508" y="341" key="SettingsEditor/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1602678043080" />
+    <state width="498" height="446" key="SwitcherDM" timestamp="1604674751930">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state width="498" height="446" key="SwitcherDM/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604674751930" />
+    <state width="498" height="398" key="SwitcherDM/7040.363.1536.832/0.0.5120.1400/-1920.230.1920.1160/5120.262.1920.1160@-1920.230.1920.1160" timestamp="1603284659514" />
+    <state x="-1128" y="724" key="VCS.EditChangelistDialog" timestamp="1603261775322">
+      <screen x="-1920" y="230" width="1920" height="1160" />
+    </state>
+    <state x="-1128" y="724" key="VCS.EditChangelistDialog/7040.363.1536.832/0.0.5120.1400/-1920.230.1920.1160/5120.262.1920.1160@-1920.230.1920.1160" timestamp="1603261775322" />
+    <state x="1553" y="496" width="499" height="434" key="Vcs.Push.Dialog.v2" timestamp="1604607543331">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="1553" y="496" width="800" height="528" key="Vcs.Push.Dialog.v2/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604607543331" />
+    <state x="-1074" y="615" width="499" height="434" key="Vcs.Push.Dialog.v2/7040.363.1536.832/0.0.5120.1400/-1920.230.1920.1160/5120.262.1920.1160@-1920.230.1920.1160" timestamp="1603436119489" />
+    <state x="2255" y="465" key="Vcs.Push.Dialog.v2/7040.364.1536.832/-1920.251.1920.1160/5120.263.1920.1160/0.0.5120.1400@0.0.5120.1400" timestamp="1601644495176" />
+    <state x="-1074" y="636" key="Vcs.Push.Dialog.v2/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@-1920.251.1920.1160" timestamp="1602142109837" />
+    <state x="2255" y="465" key="Vcs.Push.Dialog.v2/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1602570799719" />
+    <state width="904" height="615" key="XDebugger.FullValuePopup" timestamp="1604657996373">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state width="904" height="511" key="XDebugger.FullValuePopup/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604124112248" />
+    <state width="904" height="615" key="XDebugger.FullValuePopup/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604657996373" />
+    <state x="1705" y="160" width="2274" height="1142" key="com.intellij.history.integration.ui.views.DirectoryHistoryDialog" timestamp="1601636261154">
+      <screen x="0" y="0" width="5120" height="1400" />
+    </state>
+    <state x="1705" y="160" width="2274" height="1142" key="com.intellij.history.integration.ui.views.DirectoryHistoryDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636261154" />
+    <state x="181" y="93" width="1499" height="957" key="com.intellij.history.integration.ui.views.FileHistoryDialog" timestamp="1603604136429">
+      <screen x="67" y="27" width="3373" height="1173" />
+    </state>
+    <state x="181" y="93" width="1499" height="957" key="com.intellij.history.integration.ui.views.FileHistoryDialog/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1603604136429" />
+    <state x="559" y="129" width="2274" height="1142" key="com.intellij.history.integration.ui.views.FileHistoryDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636582132" />
+    <state x="67" y="325" width="2289" height="1062" key="com.intellij.history.integration.ui.views.SelectionHistoryDialog" timestamp="1604213070815">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="67" y="27" width="1613" height="1023" key="com.intellij.history.integration.ui.views.SelectionHistoryDialog/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604207428924" />
+    <state x="67" y="325" width="2289" height="1062" key="com.intellij.history.integration.ui.views.SelectionHistoryDialog/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604213070815" />
+    <state x="1486" y="355" width="866" height="676" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1602850936662">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="1486" y="355" width="866" height="676" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1602850936662" />
+    <state x="-1352" y="738" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1603283821782">
+      <screen x="-1920" y="230" width="1920" height="1160" />
+    </state>
+    <state x="1064" y="646" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1602574696020" />
+    <state x="-1352" y="738" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/7040.363.1536.832/0.0.5120.1400/-1920.230.1920.1160/5120.262.1920.1160@-1920.230.1920.1160" timestamp="1603283821782" />
+    <state x="1513" y="613" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636716369" />
+    <state x="884" y="302" width="1806" height="1002" key="find.popup" timestamp="1604514871905">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="263" y="251" width="588" height="522" key="find.popup/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604430270710" />
+    <state x="884" y="302" width="1806" height="1002" key="find.popup/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604514871905" />
+    <state x="2129" y="409" width="587" height="534" key="find.popup/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601626848475" />
+    <state x="1438" y="594" key="git4idea.ui.GitResetDialog" timestamp="1601635864938">
+      <screen x="0" y="0" width="5120" height="1400" />
+    </state>
+    <state x="1438" y="594" key="git4idea.ui.GitResetDialog/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601635864938" />
+    <state width="1320" height="500" key="javadoc.popup.new" timestamp="1604772099176">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state width="726" height="416" key="javadoc.popup.new/67.27.1853.1173/3440.0.1920.1200@67.27.1853.1173" timestamp="1604590388373" />
+    <state width="1320" height="416" key="javadoc.popup.new/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1604270091764" />
+    <state width="1320" height="500" key="javadoc.popup.new/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604772099176" />
+    <state x="1046" y="461" width="700" height="530" key="recent.locations.popup" timestamp="1603196369567">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="1046" y="461" width="700" height="530" key="recent.locations.popup/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1603196369567" />
+    <state x="1717" y="394" width="1181" height="827" key="search.everywhere.popup" timestamp="1604470307472">
+      <screen x="67" y="27" width="3373" height="1413" />
+    </state>
+    <state x="856" y="293" width="672" height="599" key="search.everywhere.popup/67.27.1613.1023/3440.0.1920.1200@67.27.1613.1023" timestamp="1604093132342" />
+    <state x="1717" y="332" width="1181" height="686" key="search.everywhere.popup/67.27.3373.1173/3440.0.1920.1200@67.27.3373.1173" timestamp="1603603155243" />
+    <state x="1717" y="394" width="1181" height="827" key="search.everywhere.popup/67.27.3373.1413/3440.0.1920.1200@67.27.3373.1413" timestamp="1604470307472" />
+    <state x="-981" y="532" width="672" height="678" key="search.everywhere.popup/7040.363.1536.832/0.0.5120.1400/-1920.230.1920.1160/5120.262.1920.1160@-1920.230.1920.1160" timestamp="1603284466798" />
+    <state x="2505" y="364" key="search.everywhere.popup/7040.364.1536.832/0.0.5120.1400/-1920.251.1920.1160/5120.263.1920.1160@0.0.5120.1400" timestamp="1601636399048" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/joker_network$joker_classify_network.coverage" NAME="joker-classify-network Coverage Results" MODIFIED="1603398731561" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$make_training_dataset.coverage" NAME="make training dataset Coverage Results" MODIFIED="1604740374267" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$record_nonjokers.coverage" NAME="record nonjokers Coverage Results" MODIFIED="1604648505468" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$dataset_utils.coverage" NAME="dataset_utils Coverage Results" MODIFIED="1603979959135" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$consumer.coverage" NAME="consumer Coverage Results" MODIFIED="1604647920988" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$measure_flops_frame.coverage" NAME="measure flops/frame Coverage Results" MODIFIED="1604731290416" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$record_jokers.coverage" NAME="record jokers Coverage Results" MODIFIED="1603889061563" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$producer.coverage" NAME="producer Coverage Results" MODIFIED="1604647915785" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$consumer_with_serial_port_from_globals_and_utils_py.coverage" NAME="consumer Coverage Results" MODIFIED="1604470585966" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$consumer_ubuntu__dev_ttyUSB0.coverage" NAME="consumer ubuntu /dev/ttyUSB0 Coverage Results" MODIFIED="1603036702428" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$test_random_samples.coverage" NAME="test random samples Coverage Results" MODIFIED="1604595177732" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$consumerMac.coverage" NAME="consumerMac Coverage Results" MODIFIED="1603301868038" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$clean_up_image_folder.coverage" NAME="clean up image folder Coverage Results" MODIFIED="1604650700081" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$measure_CNN_latency.coverage" NAME="measure CNN latency Coverage Results" MODIFIED="1604680693832" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$train.coverage" NAME="train Coverage Results" MODIFIED="1604773605072" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$riffle_test.coverage" NAME="riffle_test Coverage Results" MODIFIED="1604772326294" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/joker_network$test_accuracy.coverage" NAME="test accuracy Coverage Results" MODIFIED="1604649141304" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>

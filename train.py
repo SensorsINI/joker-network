@@ -11,7 +11,7 @@ from pathlib import Path
 import random
 from shutil import copyfile
 from tkinter import *
-from tkinter import filedialog
+from tkinter import filedialog, simpledialog
 
 # uncomment lines to run on CPU
 # import os
@@ -192,9 +192,13 @@ def riffle_test(args):
               ', backwards\n'
               'j moves to joker folder\n'
               'n moves to nonjoker folder\n'
-              't toggles pausing at possible joker\n'
+              'g goes to selected frame (by dialog for frame number)\n'
+              't toggles between pausing at possible joker|pausing only at certain jokers|not pausing\n'
               'enter selects new playback folder\n'
               'h print help')
+
+    pause_modes={0:'pause_possible',1:'pause_certain',2:'dont_pause'}
+    pause_mode=0
 
     interpreter, input_details, output_details = load_tflite_model()
     Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -239,7 +243,6 @@ def riffle_test(args):
         ls = sorted(ls)
         nfiles = len(ls)
         mode = 'fwd'
-        pause_at_possible_joker=True
         idx = -1
 
         try:
@@ -280,7 +283,9 @@ def riffle_test(args):
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                             cv2.imshow('frame', img_arr)
                         d=15 # ms
-                        if (joker_prob > threshold_pause_prob and pause_at_possible_joker) or mode!='fwd':
+                        if is_joker and pause_mode==1:
+                            d=0
+                        elif (joker_prob > threshold_pause_prob and pause_mode==0) or mode!='fwd':
                             d=0
                         k = cv2.waitKey(d)  # wait longer for joker detected
                         k = k & 0xff
@@ -302,14 +307,24 @@ def riffle_test(args):
                         elif k == ord('h'):
                             print_help()
                         elif k == ord('t'):
-                            pause_at_possible_joker = not pause_at_possible_joker
-                            print('pausing at possible jokers' if pause_at_possible_joker else 'not pausing for possible jokers')
+                            pause_mode += 1
+                            if pause_mode > 2:
+                                pause_mode = 0
+                            print(f'pause mode: {pause_modes[pause_mode]}')
                         elif k == ord('j'):
                             log.info(f'moving {image_file_path} to {JOKERS_FOLDER}')
                             try:
                                 move_with_backup(image_file_path, JOKERS_FOLDER)
                             except Exception as e:
                                 log.error(f'could not move {image_file_path}->{JOKERS_FOLDER}: caught {e}')
+
+                        elif k==ord('g'):
+                            goto=simpledialog.askinteger('go to frame', 'frame number?')
+                            if goto<0:
+                                goto=0
+                            elif goto>=nfiles:
+                                goto=nfiles-1
+                            idx=goto
 
                         elif k == ord('n'):
                             log.info(f'moving {image_file_path} to {NONJOKERS_FOLDER}')
@@ -811,14 +826,12 @@ def train(args=None):
         log.info(f'summary of {gen.directory}:'
                  f' {gen.samples} samples:\t{num_nonjoker}/{pc(num_nonjoker):.3f}% nonjoker,\t{num_joker}/{pc(num_joker):.3f}% joker\n')
 
-    print_datagen_summary(train_generator)
-    print_datagen_summary(valid_generator)
-    print_datagen_summary(test_generator)
 
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=1e-2,
+        initial_learning_rate=0.01,
         decay_steps=train_generator.n // train_batch_size,  # every epoch decrease learning rate
         decay_rate=0.9)
+
 
     optimizer = tf.keras.optimizers.SGD(momentum=.9, learning_rate=lr_schedule)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
     loss = tf.keras.losses.CategoricalCrossentropy()
@@ -838,10 +851,13 @@ def train(args=None):
         log.info('starting training')
         epochs = 300
 
-        class_weight = {0: .5, 1: .5}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
+        class_weight = {0: .1, 1: .9}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
-
+        log.info(f'learning rate schedule: {lr_schedule}')
+        print_datagen_summary(train_generator)
+        print_datagen_summary(valid_generator)
+        print_datagen_summary(test_generator)
         try:
             history = model.fit(train_generator,  # todo back to train generator
                                 # steps_per_epoch=150,
@@ -939,8 +955,6 @@ def plot_history(history, start_timestr):
 def generate_augmented_images(args):
     folder = TRAIN_DATA_FOLDER
     os.chdir(folder)
-    start_time = time.time()
-    start_timestr = time.strftime("%Y%m%d-%H%M")
     root = Tk()
     root.withdraw()
     folder = filedialog.askdirectory()

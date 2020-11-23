@@ -50,7 +50,11 @@ def producer(args):
     atexit.register(cleanup)
     record=args.record
     spacebar_records=args.spacebar_records
-    log.info(f'recording to {record} with spacebar_records={spacebar_records} and args {str(args)}')
+    space_toggles_recording=args.space_toggles_recording
+    if space_toggles_recording and spacebar_records:
+        log.error('set either spacebar_records or space_toggles_recording')
+        quit(1)
+    log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
     if record is not None:
         recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
         log.info(f'recording frames to {recording_folder}')
@@ -103,7 +107,8 @@ def producer(args):
     frame_number=0
     time_last_frame_sent=time.time()
     frames_dropped_counter=0
-    save_next_frame=not spacebar_records # if we don't supply the option, it will be False and we want to then save all frames
+    recording_activated=False
+    save_next_frame=(not space_toggles_recording and not spacebar_records) # if we don't supply the option, it will be False and we want to then save all frames
     saved_events=[]
 
     try:
@@ -161,7 +166,7 @@ def producer(args):
                     data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
                     frame_number+=1
                     client_socket.sendto(data, udp_address)
-                if recording_folder is not None and save_next_frame:
+                if recording_folder is not None and (save_next_frame or recording_activated):
                     recording_frame_number=write_next_image(recording_folder,recording_frame_number,frame)
                     print('.',end='')
                     if recording_frame_number%80==0:
@@ -179,22 +184,34 @@ def producer(args):
                                 cv2.resizeWindow('DVS', 600, 600)
                                 cv2_resized = True
                             k=    cv2.waitKey(1) & 0xFF
-                            if k== ord('q'):
+                            if k== ord('q') or k== ord('x'):
                                 if recording_folder is not None:
                                     log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
                                 print_timing_info()
                                 break
                             elif k==ord('p'):
                                 print_timing_info()
-                            elif spacebar_records and k==ord(' '):
-                                save_next_frame=True
+                            elif k==ord(' ') and (spacebar_records or space_toggles_recording):
+                                if spacebar_records:
+                                    save_next_frame=True
+                                else:
+                                    recording_activated=not recording_activated
+                                    if recording_activated:
+                                        print('recording activated - use space to stop recording')
+                                    else:
+                                        print('recording paused - use space to start recording')
+                                    save_next_frame=recording_activated
                             else:
-                                save_next_frame=not spacebar_records
-        if saved_events is not None and recording_folder is not None:
-            o=np.empty((0,5),dtype=np.float32)
+                                save_next_frame=(recording_activated or (not spacebar_records and not space_toggles_recording))
+        if saved_events is not None and recording_folder is not None and len(saved_events)>0:
+            nevents=0
+            for a in saved_events:
+                nevents+=len(a)
+            o=np.empty((nevents,5),dtype=np.float32)
+            idx=0
             for a in tqdm(saved_events,desc='converting events to numpy'):
-                o=np.vstack([o,a])
-            nevents=len(o)
+                o[idx:idx+a.shape[0]]=a
+                idx+=a.shape[0]
             data_path=os.path.join(recording_folder,f'events-{timestr}.npy')
             log.info(f'saving {eng(nevents)} events to {data_path}')
             np.save(data_path,o)
@@ -220,6 +237,9 @@ if __name__ == '__main__':
     parser.add_argument(
         "--spacebar_records", action='store_true',
         help="only record when spacebar pressed down")
+    parser.add_argument(
+        "--space_toggles_recording", action='store_true',
+        help="space toggles recording on/off")
     parser.add_argument(
         "--numpy", action='store_true',
         help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")

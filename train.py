@@ -87,7 +87,8 @@ def make_training_set():
     """
     NUM_FRAMES_PER_SEGMENT = 20  # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
     NUM_FRAMES_GAP_BETWEEN_SEGMENTS = 5  # each 'sample' comes from a consecutive sequence of this many frames to try to avoid that valid/test set have frames that are next to training set frames
-    PREVIEW = yes_or_no('show samples from dataset?', default='n', timeout=30)
+    SPLIT = {'train': .8, 'valid': .1, 'test': .1}
+    show_preview_frames = yes_or_no('show samples from dataset?', default='n', timeout=30)
 
     log.info(f'making training set from {SRC_DATA_FOLDER} with segments of {NUM_FRAMES_PER_SEGMENT} consecutive images with gaps of {NUM_FRAMES_GAP_BETWEEN_SEGMENTS} frames between segments')
     if not os.path.isdir(TRAIN_DATA_FOLDER):
@@ -105,9 +106,8 @@ def make_training_set():
 
     log.info(f'Using source images from {SRC_DATA_FOLDER}')
     os.chdir(SRC_DATA_FOLDER)
-    splits = {'train': .7, 'valid': .2, 'test': .1}
     last_frame_time = time.time()
-    splits = {'train': .7, 'valid': .2, 'test': .1}
+    SPLIT = {'train': .7, 'valid': .2, 'test': .1}
     for cls in ['class1', 'class2']:
         ls = os.listdir(cls)
         ls = sorted(ls)  # sort first to get in number order
@@ -117,7 +117,7 @@ def make_training_set():
         random.shuffle(segs)  # shuffle segments of batches of images
         log.info(f'{cls} has {nfiles} samples that are split to {nsegments} sequences of {NUM_FRAMES_PER_SEGMENT} frames/seq')
         split_start = 0
-        for split_name, split_frac in zip(splits.keys(), splits.values()):
+        for split_name, split_frac in zip(SPLIT.keys(), SPLIT.values()):
             dest_folder_name = os.path.join(TRAIN_DATA_FOLDER, split_name, cls)
             log.info(f'making {dest_folder_name}/ folder for shuffled segments of {NUM_FRAMES_PER_SEGMENT} frames per segment for {split_frac * 100:.1f}% {split_name} split of {cls} ')
             Path(dest_folder_name).mkdir(parents=True, exist_ok=True)
@@ -163,7 +163,7 @@ def make_training_set():
                     except Exception as e:
                         log.warning(f'{dest_file_path} could not be saved: {e}')
                         continue
-                if PREVIEW and time.time() - last_frame_time > 1:
+                if show_preview_frames and time.time() - last_frame_time > 1:
                     cv2.namedWindow(cls, cv2.WINDOW_NORMAL)
                     cv2.imshow(cls, img_arr if img_arr is not None else tf.keras.preprocessing.image.img_to_array(img, dtype='uint8'))
                     cv2.waitKey(1)
@@ -193,6 +193,7 @@ def riffle_test(args):
               'j moves to joker folder\n'
               'n moves to nonjoker folder\n'
               'g goes to selected frame (by dialog for frame number)\n'
+              'f/r fastfowards/rewinds backwards\n'
               't toggles between pausing at possible joker|pausing only at certain jokers|not pausing\n'
               'enter selects new playback folder\n'
               'h print help')
@@ -231,6 +232,12 @@ def riffle_test(args):
     print_help()
     cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('frame', 800, 800)
+
+    def clamp(val,minval, maxval):
+        if val < minval: return minval
+        if val > maxval: return maxval
+        return val
+
     while True:
         root = Tk()
         root.withdraw()
@@ -278,7 +285,7 @@ def riffle_test(args):
                         is_joker = joker_prob > JOKER_DETECT_THRESHOLD_SCORE
                         if not args.show_only_jokers or (args.show_only_jokers and is_joker):
                             img_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
-                            cv2.putText(img_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 30), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+                            cv2.putText(img_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
                             # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                             cv2.imshow('frame', img_arr)
@@ -319,13 +326,13 @@ def riffle_test(args):
                                 log.error(f'could not move {image_file_path}->{JOKERS_FOLDER}: caught {e}')
 
                         elif k==ord('g'):
-                            goto=simpledialog.askinteger('go to frame', 'frame number?')
-                            if goto<0:
-                                goto=0
-                            elif goto>=nfiles:
-                                goto=nfiles-1
-                            idx=goto
-
+                            idx=clamp(simpledialog.askinteger('go to frame', 'frame number?'),0,nfiles-1)
+                        elif k==ord('f'):
+                            idx=clamp(idx+100,0,nfiles-1)
+                            log.info('fastforward')
+                        elif k==ord('r'):
+                            idx = clamp(idx - 100, 0, nfiles-1)
+                            log.info('fastforward')
                         elif k == ord('n'):
                             log.info(f'moving {image_file_path} to {NONJOKERS_FOLDER}')
                             try:
@@ -614,9 +621,9 @@ def create_model_mobilenet():
 
     """
     weights = None # 'imagenet'
-    alpha = .25  # 0.25 is smallest version with imagenet weights
+    alpha = .5  # 0.25 is smallest version with imagenet weights
     depth_multiplier = int(1)
-    dropout = 0.001  # default is .001
+    dropout = 0.01  # default is .001
     include_top = True  # set false to specify our own FC layers
     fully_connected_layers = (128, 128)  # our FC layers
     num_input_channels = 3 if weights == 'imagenet' else 1
@@ -851,7 +858,7 @@ def train(args=None):
         log.info('starting training')
         epochs = 300
 
-        class_weight = {0: .1, 1: .9}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
+        class_weight = {0: .5, 1: .5}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
         log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
         history = None
         log.info(f'learning rate schedule: {lr_schedule}')

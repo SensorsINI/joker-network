@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="trixsy" type="CompoundRunConfigurationType">
-    <toRun name="consumer with serial port from globals_and_utils.py" type="PythonConfigurationType" />
+    <toRun name="consumer" type="PythonConfigurationType" />
     <toRun name="producer" type="PythonConfigurationType" />
     <method v="2" />
   </configuration>

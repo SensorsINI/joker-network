@@ -90,7 +90,7 @@ def yes_or_no(question, default='y', timeout=None):
     n='N' if default=='n' else 'n'
     while "the answer is invalid":
         try:
-            to_str='' if timeout is None else f'(Timeout {default} in {timeout}s)'
+            to_str='' if timeout is None or os.name=='nt' else f'(Timeout {default} in {timeout}s)'
             if os.name=='nt':
                 log.warning('cannot use timeout signal on windows')
                 reply=str(input(f'{question} {to_str} ({y}/{n}): ')).lower().strip()

@@ -1,12 +1,12 @@
 # joker-network
 
-Host side code and firmware for the Trixsy card finding magic robot.
+Host side code https://github.com/SensorsINI/joker-network and firmware for the Trixsy card finding magic robot.
 
 [![Watch the video](https://img.youtube.com/vi/Y0Crn4DU17M/hqdefault.jpg)](https://youtu.be/Y0Crn4DU17M)
 
 Trixsy thrusts out its finger at the exactly correct moment as the cards are riffled past its finger.
 
-Trixsy uses a 346x260 DVS event camera designed by the Sensors group (and sold by inivation.com) to generate constant count frames at hundreds of Hz and with a latency of  less than 1 ms. Trixy is written in python. Trisy uses https://github.com/duguyue100/pyaer to capture events in a producer process, and sends the frames to the consumer process by local UDB socket. A TensorflowLite 2.0 AlexNet CNN detects the selected card in about 4 ms. The PC sends the command to the Arduino Nano, which turns off an NPN bipolar which lets the power MOSFET gate go up to 24V. The MOSFET lets the charge stored on an 11F ultra cap array charged to 24V dump onto a solenoid to push our the finger lever in about 20 ms. Trixsy's whole finger is powered by USB bus power (24V comes from 5V VBUS via $2 DC-DC converter.)
+Trixsy uses a 346x260 DVS event camera designed by the Sensors group (and sold by inivation.com) to generate constant count frames at hundreds of Hz and with a latency of  less than 1 ms. Trixy is written in python. Trisy uses https://github.com/duguyue100/pyaer to capture events in a producer process, and sends the pickeled frames to the consumer process by local UDP socket. A TensorflowLite 2.0 CNN detects the selected card in about 4 ms. The PC sends the command to the Arduino Nano, which turns off an NPN bipolar which lets the power MOSFET gate go up to 24V. The MOSFET lets the charge stored on an 11F ultra cap array charged up to 48V dump onto a solenoid to push our the finger lever in less than 15ms. Trixsy's whole finger can be powered by USB bus power (24V comes from 5V VBUS via $2 DC-DC converter) although for quicker finger we sometimes use a cheap DC power supply that supplies up to 60V (we use two ultracap arrays in series in this case).
 
 Trixsy was developed by Tobi Delbruck, visiting CSC student Shasha Guo, and PhD students Min Liu and Yuhuang Hu. Thanks for filming to Joao Sacramento and Johannes Oswald.
 
@@ -95,6 +95,9 @@ The script _make_train_valid_test()_ in _dataset_utils.py_ builds these folders 
 Each train/valid/test sub-folder contains two sub-folders, _class1_/ and _class2_/. 
 
 _class1_/ has non-joker images and _class2_/ contains joker images.
+
+# Dataset
+A snapshot of the dataset is stored on _sensors-nas_ in the folder _sensors/trixsy_.
 
 
 # Results

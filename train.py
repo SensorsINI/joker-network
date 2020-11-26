@@ -477,11 +477,11 @@ def load_latest_model():
     return model
 
 
-def load_tflite_model(folder=None):
+def load_tflite_model(folder=None, dialog=True):
     """ loads the most recent trained TFLITE model
 
     :param folder: folder where TFLITE_FILE_NAME is to be found, or None to find latest one
-
+    :param dialog: set False to raise FileNotFoundError or True to open file dialog to browse for model
     :returns: interpreter,input_details,output_details
 
     :raises: FileNotFoundError if TFLITE_FILE_NAME is not found in folder
@@ -493,13 +493,20 @@ def load_tflite_model(folder=None):
             latest_model_folder = max(existing_models, key=os.path.getmtime)
             tflite_model_path = os.path.join(latest_model_folder, TFLITE_FILE_NAME)
             if not os.path.isfile(tflite_model_path):
-                raise FileNotFoundError(f'no TFLITE model found at {tflite_model_path}')
+                if not dialog:
+                    raise FileNotFoundError(f'no TFLITE model found at {tflite_model_path}')
+                else:
+                    root = Tk()
+                    root.withdraw()
+                    tflite_model_path = filedialog.askopenfilename(initialdir= MODEL_DIR, title='Select TFLITE model', filetypes=[('Tensorflow lite models','*.tflite')])
+                    if tflite_model_path is None:
+                        log.info('aborted')
+                        quit(1)
         else:
             raise FileNotFoundError(f'no models found in {MODEL_DIR}')
-
     else:
         tflite_model_path = os.path.join(folder, TFLITE_FILE_NAME)
-        log.info('loading tflite CNN model {}'.format(tflite_model_path))
+    log.info('loading tflite CNN model {}'.format(tflite_model_path))
     # model = load_model(MODEL)
     # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
 

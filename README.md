@@ -29,11 +29,11 @@ pip install opencv-python tensorflow keras pyserial pyaer engineering_notation m
 or
 ```
 conda install keras tensorflow opencv numpy pyserial  -c conda-forge
-pip install pyaer engineering_notation sklearn  flopco-keras
+pip install pyaer engineering_notation sklearn  flopco-keras image-classifiers tqdm
 ```
 
 #### Note about pip vs conda
-For some reason, pip is preferred over conda for installing opencv and tensorflow. At least at time of this file.
+For some reason, pip is preferred over conda for installing opencv and tensorflow. At least at time of this writing.
 
 ### pyaer
 pyaer needs https://github.com/inivation/libcaer. Clone it, then follow instructions in its README to install libcaer. 

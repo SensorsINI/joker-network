@@ -6,6 +6,7 @@ import math
 import os
 import sys
 import time
+from pathlib import Path
 from subprocess import TimeoutExpired
 
 import cv2
@@ -29,16 +30,17 @@ MIN_PRODUCER_FRAME_INTERVAL_MS=5.0 # inference takes about 3ms and normalization
         # passed since last frame was sent. That way, we make sure not to flood the consumer
 MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
+ROOT_DATA_FOLDER= os.path.join(os.path.expanduser("~"),"Downloads",'trixsyDataset')
 
-DATA_FOLDER = '/home/tobi/Downloads/trixsyDataset/data' #'data'  # new samples stored here
+DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'data') #/home/tobi/Downloads/trixsyDataset/data' #'data'  # new samples stored here
 NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 3 # when joker detected by consumer, this many random previous nonjoker frames are also saved
 JOKERS_FOLDER = DATA_FOLDER + '/jokers'  # where samples are saved during runtime of consumer
 NONJOKERS_FOLDER = DATA_FOLDER + '/nonjokers'
 SERIAL_PORT = "/dev/ttyUSB0"  # port to talk to arduino finger controller
 
 LOG_DIR='logs'
-SRC_DATA_FOLDER = '/home/tobi/Downloads/trixsyDataset/source_data'
-TRAIN_DATA_FOLDER='/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
+SRC_DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'source_data') #'/home/tobi/Downloads/trixsyDataset/source_data'
+TRAIN_DATA_FOLDER=os.path.join(ROOT_DATA_FOLDER,'training_dataset') #'/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
 
 MODEL_DIR='models' # where models stored
@@ -89,7 +91,11 @@ def yes_or_no(question, default='y', timeout=None):
     while "the answer is invalid":
         try:
             to_str='' if timeout is None else f'(Timeout {default} in {timeout}s)'
-            reply = str(input_with_timeout(f'{question} {to_str} ({y}/{n}): ',timeout=timeout)).lower().strip()
+            if os.name=='nt':
+                log.warning('cannot use timeout signal on windows')
+                reply=str(input(f'{question} {to_str} ({y}/{n}): ')).lower().strip()
+            else:
+                reply = str(input_with_timeout(f'{question} {to_str} ({y}/{n}): ',timeout=timeout)).lower().strip()
         except TimeoutError:
             log.warning(f'timeout expired, returning default={default} answer')
             reply=''

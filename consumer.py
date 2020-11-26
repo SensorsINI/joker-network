@@ -83,6 +83,11 @@ if __name__ == '__main__':
     STATE_FINGER_OUT = 1
     state = STATE_IDLE
 
+    def print_num_saved_images():
+        log.info(f'saved {next_non_joker_index} nonjokers to {NONJOKERS_FOLDER} and {next_joker_index} jokers to {JOKERS_FOLDER}')
+
+    atexit.register(print_num_saved_images)
+
     log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('GPU')) > 0 else 'not available (check tensorflow/cuda setup)'))
 
 

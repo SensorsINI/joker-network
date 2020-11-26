@@ -11,4 +11,6 @@ flopco-keras # may need a fork and edit to line 14 of setup.py to change pip.req
 torch
 engineeringformat
 psutil
+image-classifiers
+tqdm
 

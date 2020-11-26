@@ -107,7 +107,7 @@ def make_training_set():
     log.info(f'Using source images from {SRC_DATA_FOLDER}')
     os.chdir(SRC_DATA_FOLDER)
     last_frame_time = time.time()
-    SPLIT = {'train': .7, 'valid': .2, 'test': .1}
+    SPLIT = {'train': .8, 'valid': .1, 'test': .1}
     for cls in ['class1', 'class2']:
         ls = os.listdir(cls)
         ls = sorted(ls)  # sort first to get in number order
@@ -621,9 +621,9 @@ def create_model_mobilenet():
 
     """
     weights = None # 'imagenet'
-    alpha = .5  # 0.25 is smallest version with imagenet weights
+    alpha = .25  # 0.25 is smallest version with imagenet weights
     depth_multiplier = int(1)
-    dropout = 0.01  # default is .001
+    dropout = 0.5  # default is .001
     include_top = True  # set false to specify our own FC layers
     fully_connected_layers = (128, 128)  # our FC layers
     num_input_channels = 3 if weights == 'imagenet' else 1
@@ -769,7 +769,7 @@ def train(args=None):
     log.warning('test warning')
     log.error('test error')
 
-    train_batch_size = 64
+    train_batch_size = 32
     valid_batch_size = 64
     test_batch_size = 64
 

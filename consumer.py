@@ -19,7 +19,7 @@ import collections
 from pathlib import Path
 import random
 
-from train import load_tflite_model, classify_joker_img
+from train import load_latest_model, classify_joker_img
 
 log=my_logger(__name__)
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     address = ("", PORT)
     server_socket.bind(address)
-    interpreter, input_details, output_details=load_tflite_model()
+    model,interpreter, input_details, output_details=load_latest_model()
 
     serial_port = args.serial_port
     log.info('opening serial port {} to send commands to finger'.format(serial_port))
@@ -138,7 +138,7 @@ if __name__ == '__main__':
                 # img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                is_joker, joker_prob, pred=classify_joker_img(img, interpreter, input_details, output_details)
+                is_joker, joker_prob, pred=classify_joker_img(img, model,interpreter, input_details, output_details)
             if latency_test:
 
                 if time.time()-last_latency_test_time>2:

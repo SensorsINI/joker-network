@@ -201,7 +201,7 @@ def riffle_test(args):
     pause_modes={0:'pause_possible',1:'pause_certain',2:'dont_pause'}
     pause_mode=0
 
-    interpreter, input_details, output_details = load_tflite_model()
+    model,interpreter, input_details, output_details = load_latest_model()
     Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(NONJOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(DATA_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -277,7 +277,7 @@ def riffle_test(args):
                             continue
                         img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
                         img_arr = tf.image.resize(img_arr, (IMSIZE, IMSIZE))  # note we do NOT want black borders and to preserve aspect ratio! We just want to squash to square
-                        is_joker, joker_prob, pred = classify_joker_img(img_arr, interpreter, input_details, output_details)
+                        is_joker, joker_prob, pred = classify_joker_img(img_arr, model, interpreter, input_details, output_details)
                         threshold_pause_prob = .05
                         # override default threshold to show ambiguous samples
                         file = jokers_list_file if is_joker else nonjokers_list_file
@@ -433,7 +433,7 @@ def test_random_samples():
                 idx[c - 1] = 0
 
 
-def classify_joker_img(img: np.array, interpreter, input_details, output_details, model:tf.keras.Model=None):
+def classify_joker_img(img: np.array, model:tf.keras.Model, interpreter, input_details, output_details):
     """ Classify uint8 img
 
     :param img: input image as unit8 np.array
@@ -444,80 +444,70 @@ def classify_joker_img(img: np.array, interpreter, input_details, output_details
 
     :returns: is_joker (True/False), joker_probability (0-1), prediction[2]=[nonjoker, joker]
     """
-    nchan = input_details[0]['shape'][3]
-    if model is not None and model.name=='mobilenet-roshambo':
-        img = tf.keras.applications.mobilenet.preprocess_input(img)
-        inp =np.reshape(img, [1, IMSIZE, IMSIZE, nchan])
-    else:
-        inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32)  # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
-    interpreter.set_tensor(input_details[0]['index'], inp)
-    interpreter.invoke()
-    pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
-    joker_prob = pred_vector[1]
-    is_joker = pred_vector[1] > pred_vector[0] and joker_prob > JOKER_DETECT_THRESHOLD_SCORE
+    USE_TFLITE=True # set true to use TFLITE model, false to use full TF model
+    is_joker=None
+    joker_prob=None
+    pred_vector=None
+    if USE_TFLITE:
+        nchan = input_details[0]['shape'][3]
+        if model is not None and model.name=='mobilenet-roshambo':
+            img = tf.keras.applications.mobilenet.preprocess_input(img)
+            inp =np.reshape(img, [1, IMSIZE, IMSIZE, nchan])
+        else:
+            inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32)  # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
+        interpreter.set_tensor(input_details[0]['index'], inp)
+        interpreter.invoke()
+        pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
+        joker_prob = pred_vector[1]
+        is_joker = pred_vector[1] > pred_vector[0] and joker_prob > JOKER_DETECT_THRESHOLD_SCORE
+    else: # use full TF model
+        inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32)  # todo not sure about 1/255 if
+        pred=model.predict(inp)
+        pred_vector = pred[0]
+        joker_prob = pred_vector[1]
+        is_joker = pred_vector[1] > pred_vector[0] and joker_prob > JOKER_DETECT_THRESHOLD_SCORE
+
     return is_joker, joker_prob, pred_vector
 
 
-def load_latest_model():
-    existing_model_folders = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '*/')
-    model = None
-
-    if len(existing_model_folders) > 0:
-        log.info(f'found existing models:\n{existing_model_folders}\n choosing newest one')
-        latest_model_folder = max(existing_model_folders, key=os.path.getmtime)
-        log.info(f'*** initializing model from {latest_model_folder}')
-        time.sleep(3)
-        model = load_model(latest_model_folder)
-        # model.compile()
-        model.summary()
-        print(f'model.input_shape: {model.input_shape}')
-    else:
-        log.error('no model found to load')
-        quit(1)
-    return model
-
-
-def load_tflite_model(folder=None, dialog=True):
-    """ loads the most recent trained TFLITE model
+def load_latest_model(folder=None, dialog=True):
+    """ Loads the latest trained model.  It loads the tensorflow 2 model and the tensorflow lite interpreter,
+    along with input and output details for the TFLITE interpreter.
 
     :param folder: folder where TFLITE_FILE_NAME is to be found, or None to find latest one
     :param dialog: set False to raise FileNotFoundError or True to open file dialog to browse for model
-    :returns: interpreter,input_details,output_details
 
-    :raises: FileNotFoundError if TFLITE_FILE_NAME is not found in folder
+    :returns: model, tflite_interpreter, input_details, output_details
     """
-    tflite_model_path = None
-    if folder is None:
-        existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
-        if len(existing_models) > 0:
-            latest_model_folder = max(existing_models, key=os.path.getmtime)
-            tflite_model_path = os.path.join(latest_model_folder, TFLITE_FILE_NAME)
-            if not os.path.isfile(tflite_model_path):
-                if not dialog:
-                    raise FileNotFoundError(f'no TFLITE model found at {tflite_model_path}')
-                else:
-                    root = Tk()
-                    root.withdraw()
-                    tflite_model_path = filedialog.askopenfilename(initialdir= MODEL_DIR, title='Select TFLITE model', filetypes=[('Tensorflow lite models','*.tflite')])
-                    if tflite_model_path is None:
-                        log.info('aborted')
-                        quit(1)
-        else:
-            raise FileNotFoundError(f'no models found in {MODEL_DIR}')
+    # existing_model_folders = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '*/')
+    model = None
+    tflite_model_path=None
+    model_folder = None
+    if folder is not None:
+        model_folder=folder
+        tflite_model_path = os.path.join(model_folder, TFLITE_FILE_NAME)
     else:
-        tflite_model_path = os.path.join(folder, TFLITE_FILE_NAME)
-    log.info('loading tflite CNN model {}'.format(tflite_model_path))
-    # model = load_model(MODEL)
+        paths = sorted(Path(MODEL_DIR).iterdir(), key=os.path.getmtime, reverse=True)
+        # existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
+        for model_folder in paths:
+            tflite_model_path = os.path.join(model_folder, TFLITE_FILE_NAME)
+            if not os.path.isfile(tflite_model_path):
+                continue
+            else:
+                break
+    if model_folder is None:
+        log.error(f'no folder found in {MODEL_DIR} with {TFLITE_FILE_NAME}')
+        quit(1)
+    log.info(f'loading CNN model from {model_folder}')
+    model = load_model(model_folder)
     # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
-
     interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
     interpreter.allocate_tensors()
     # Get input and output tensors.
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
 
-    return interpreter, input_details, output_details
-
+    return model,interpreter, input_details, output_details
 
 def measure_flops():
     log.info('measuring Op/frame for CNN')
@@ -688,7 +678,7 @@ def create_model(ask_for_comment=True):
 
 def measure_latency(model_folder=None):
     log.info('measuring CNN latency in loop')
-    interpreter, input_details, output_details = load_tflite_model(model_folder)
+    model, interpreter, input_details, output_details = load_latest_model()
     nchan = input_details[0]['shape'][3]
     img = np.random.randint(0, 255, (IMSIZE, IMSIZE, nchan))
     N = 100
@@ -854,7 +844,7 @@ def train(args=None):
                   metrics=['categorical_accuracy'])
     model.summary(print_fn=log.info)
 
-    stop_early = EarlyStopping(monitor='val_loss', patience=4, verbose=1, mode='min')
+    stop_early = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
     save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
     # Profile from batches 10 to 15
     # tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log', profile_batch='10, 15')
@@ -872,6 +862,7 @@ def train(args=None):
         print_datagen_summary(train_generator)
         print_datagen_summary(valid_generator)
         print_datagen_summary(test_generator)
+        os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
         try:
             history = model.fit(train_generator,  # todo back to train generator
                                 # steps_per_epoch=150,

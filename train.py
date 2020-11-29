@@ -28,7 +28,7 @@ from tensorflow.python.keras.layers import Conv2D, MaxPooling2D, BatchNormalizat
 from tensorflow.python.keras.layers import Dense, Dropout, Flatten, GlobalAveragePooling2D
 from tensorflow.python.keras.models import Sequential, Model
 from tensorflow.python.keras.models import load_model
-from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.python.keras.preprocessing.image import ImageDataGenerator, img_to_array
 from tqdm import tqdm
 
 from globals_and_utils import *
@@ -684,7 +684,7 @@ def measure_latency(model_folder=None):
     N = 100
     for i in range(1, N):
         with Timer('CNN latency') as timer:
-            classify_joker_img(img, interpreter, input_details, output_details)
+            classify_joker_img(img, model, interpreter, input_details, output_details)
     timer.print_timing_info(log)
 
 
@@ -770,17 +770,23 @@ def train(args=None):
     valid_batch_size = 64
     test_batch_size = 64
 
+    augmentation_enabled=False
+
     color_mode = 'grayscale' if model.input_shape[3] == 1 else 'rgb'
-    train_datagen = ImageDataGenerator(  # 实例化
-        rescale=1. / 255,  # todo check this
-        rotation_range=15,  # 图片随机转动的角度
-        width_shift_range=0.2,  # 图片水平偏移的幅度
-        height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
-        fill_mode='constant',
-        cval=0,  # fill edge pixels with black; default fills with long lines of color
-        zoom_range=[.9, 1.25],  # NOTE zoom >1 minifies, don't zoom in (<1) too much in to avoid losing joker part of card
-        # horizontal_flip=False,
-    )  # 随机放大或缩小
+    train_datagen=None
+    if augmentation_enabled:
+        train_datagen = ImageDataGenerator(  # 实例化
+            rescale=1. / 255,  # todo check this
+            rotation_range=15,  # 图片随机转动的角度
+            width_shift_range=0.2,  # 图片水平偏移的幅度
+            height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
+            fill_mode='constant',
+            cval=0,  # fill edge pixels with black; default fills with long lines of color
+            zoom_range=[.9, 1.25],  # NOTE zoom >1 minifies, don't zoom in (<1) too much in to avoid losing joker part of card
+            # horizontal_flip=False,
+        )  # 随机放大或缩小
+    else:
+        train_datagen = ImageDataGenerator(rescale=1. / 255)
 
     log.info('making training generator')
     train_generator = train_datagen.flow_from_directory(
@@ -856,7 +862,7 @@ def train(args=None):
         epochs = 300
 
         class_weight = {0: .5, 1: .5}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
-        log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} ')
+        log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} augmenation_enabled={augmentation_enabled}')
         history = None
         log.info(f'learning rate schedule: {lr_schedule}')
         print_datagen_summary(train_generator)
@@ -958,18 +964,24 @@ def plot_history(history, start_timestr):
 
 
 def generate_augmented_images(args):
-    folder = TRAIN_DATA_FOLDER
-    os.chdir(folder)
+    """
+    Generates augmented versions of images in a particular folder and saves them to a new folder.
+    Each augmented image has prefix from original PNG image name.
+    A dialog selects the source folder and another asks augmentation factor.
+
+    """
+    start_timestr = time.strftime("%Y%m%d-%H%M")
+    src_data_folder = SRC_DATA_FOLDER
+    os.chdir(src_data_folder)
     root = Tk()
     root.withdraw()
-    folder = filedialog.askdirectory()
-    if len(folder) == 0:
+    src_data_folder = filedialog.askdirectory()
+    if len(src_data_folder) == 0:
         log.info('aborted')
         quit(1)
-    os.chdir(folder)
 
     train_datagen = ImageDataGenerator(  # 实例化
-        rescale=1. / 255,  # todo check this
+        rescale=1. / 256,  # todo check this
         rotation_range=15,  # 图片随机转动的角度
         width_shift_range=0.2,  # 图片水平偏移的幅度
         height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
@@ -979,41 +991,57 @@ def generate_augmented_images(args):
         # horizontal_flip=False,
     )  # 随机放大或缩小
 
-    log.info('making training generator')
-    train_generator = train_datagen.flow_from_directory(
-        '.',
-        target_size=(IMSIZE, IMSIZE),
-        batch_size=8,  # small batch
-        class_mode='categorical',
-        color_mode='grayscale',
-        # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
-        shuffle=True,
-        interpolation='nearest',
-    )
-
     log.info(f'train_datagen: {train_datagen}')
-    log.info(f'train_generator: {train_generator.n} images')
-    folder = os.path.join(SRC_DATA_FOLDER, 'augmented')
-    Path(folder).mkdir(parents=True, exist_ok=True)
 
-    cv2.namedWindow('nonjoker', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('nonjoker', 800, 800)
-    cv2.namedWindow('joker', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('joker', 800, 800)
-    while True:
-        batch = train_generator.__next__()
-        imgs = batch[0]
-        labels = batch[1]
-        for i in range(imgs.shape[0]):
-            if labels[i][0] > labels[i][1]:
-                cv2.imshow('nonjoker', imgs[i])
-            else:
-                cv2.imshow('joker', imgs[i])
+    aug_factor = simpledialog.askinteger('Augmentation factor','Factor by which to augment?')
+    if aug_factor is None:
+        log.info('aborted')
+        quit(0)
 
+    base=os.path.split(src_data_folder)[-1]
+    aug_folder = os.path.join(SRC_DATA_FOLDER,f'{base}-augmented-{start_timestr}')
+    data_path = os.path.join(src_data_folder, '*.png')
+    files = glob.glob(data_path) # get list of all PNGs
+    log.info(f'reading {len(files)} to memory')
+
+    nsrc=len(files)
+    ntotal=int(aug_factor*nsrc)
+    log.info(f'saving {aug_factor}X={ntotal} augmented images to {aug_folder} from {src_data_folder} with {nsrc} samples')
+    try:
+        Path(aug_folder).mkdir(parents=True)
+    except:
+        log.error(f'{aug_folder} already exists')
+        quit(1)
+
+    i = 0
+    cv2.namedWindow('original', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('original', 600, 600)
+    cv2.namedWindow('augmented', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('augmented', 600, 600)
+    cv2.moveWindow('augmented',0,600)
+    nsaved=0
+    for f in tqdm(files):
+        showit=nsaved%100==0
+        img = cv2.imread(f)
+        x = img_to_array(img)
+        if showit:
+            cv2.imshow('original', (1/256.)*x)
+        x = x.reshape((1,) + x.shape)
+        i=0
+        base = os.path.splitext(os.path.split(f)[-1])[0] # e.g. /a/b/c/d/0900111.png gives 0900111
+        for batch in train_datagen.flow(x, batch_size=1, save_to_dir=aug_folder, save_prefix=base, save_format='png'):
+            i += 1
+            nsaved+=1
+            img_aug=batch[0]
+            if showit:
+                cv2.imshow('augmented', img_aug)
             k = cv2.waitKey(15) & 0xff
             if k == ord('x') or k == ord('q'):
+                log.info(f'saved {nsaved} augmented images to {aug_folder} from {src_data_folder}')
                 quit(0)
-
+            if i == aug_factor:
+                break
+    log.info(f'saved {nsaved} augmented images to {aug_folder} from {src_data_folder}')
 
 args = None  # if run as module
 

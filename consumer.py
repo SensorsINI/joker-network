@@ -135,7 +135,7 @@ if __name__ == '__main__':
                 if dropped_frames>0:
                     log.warning(f'Dropped {dropped_frames} frames from producer')
                 last_frame_number=frame_number
-                # img = (1./255)*np.reshape(img, [IMSIZE, IMSIZE,1])
+                img = (1./255)*np.array(img, dtype=np.float32)
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
                 is_joker, joker_prob, pred=classify_joker_img(img, model,interpreter, input_details, output_details)

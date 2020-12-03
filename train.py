@@ -21,6 +21,7 @@ import PIL
 import tensorflow as tf
 import tensorflow.python.keras
 from classification_models.keras import Classifiers
+import tensorflow_addons as tfa
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 # from alessandro: use keras from tensorflow, not from keras directly
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
@@ -32,6 +33,7 @@ from tensorflow.python.keras.preprocessing.image import ImageDataGenerator, img_
 from tqdm import tqdm
 
 from globals_and_utils import *
+
 
 INITIALIZE_MODEL_FROM_LATEST = True  # set True to initialize weights to latest saved model
 
@@ -267,16 +269,24 @@ def riffle_test(args):
                         continue
                     try:
                         try:
-                            color_mode = 'grayscale' if input_details[0]['shape'][3] == 1 else 'rgb'
-                            img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode=color_mode)
-                        except PIL.UnidentifiedImageError as e:
-                            log.warning(f'{e}: {image_file_path} is not an image?')
+                            img_arr=cv2.imread(image_file_path,cv2.IMREAD_GRAYSCALE)
+                            img_arr=(1/255.)* np.array(img_arr)
+                        except Exception as e2:
+                            log.warning(f'{e2}: {image_file_path} is not an image?')
                             continue
-                        if (img.format is None and (img.width != IMSIZE or img.height != IMSIZE)) and img.format != 'PNG' and img.format != 'JPEG':  # adobe media encoder does not set PNG type correctly
-                            log.warning(f'{image_file_path} is not PNG or JPEG, skipping?')
+                        if img_arr.shape[0]!= IMSIZE or img_arr.shape[1] != IMSIZE:
+                            log.warning(f'{image_file_path} has wrong shape {img_arr.shape}, skipping')
                             continue
-                        img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
-                        img_arr = tf.image.resize(img_arr, (IMSIZE, IMSIZE))  # note we do NOT want black borders and to preserve aspect ratio! We just want to squash to square
+                        # try:
+                        #     img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
+                        # except PIL.UnidentifiedImageError as e:
+                        #     log.warning(f'{e}: {image_file_path} is not an image?')
+                        #     continue
+                        # if (img.format is None and (img.width != IMSIZE or img.height != IMSIZE)) and img.format != 'PNG' and img.format != 'JPEG':  # adobe media encoder does not set PNG type correctly
+                        #     log.warning(f'{image_file_path} is not PNG or JPEG, skipping?')
+                        #     continue
+                        # img_arr = tf.keras.preprocessing.image.img_to_array(img, dtype='uint8')
+                        # img_arr = tf.image.resize(img_arr, (IMSIZE, IMSIZE))  # note we do NOT want black borders and to preserve aspect ratio! We just want to squash to square
                         is_joker, joker_prob, pred = classify_joker_img(img_arr, model, interpreter, input_details, output_details)
                         threshold_pause_prob = .05
                         # override default threshold to show ambiguous samples
@@ -284,11 +294,12 @@ def riffle_test(args):
                         file.write(os.path.realpath(image_file_path) + '\n')
                         is_joker = joker_prob > JOKER_DETECT_THRESHOLD_SCORE
                         if not args.show_only_jokers or (args.show_only_jokers and is_joker):
-                            img_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
-                            cv2.putText(img_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+                            # cv2_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
+                            cv2_arr = img_arr  # make sure it is an np.array, not EagerTensor that cv2 cannot display
+                            cv2.putText(cv2_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
                             # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-                            cv2.imshow('frame', img_arr)
+                            cv2.imshow('frame', cv2_arr)
                         d=15 # ms
                         if is_joker and pause_mode==1:
                             d=0
@@ -391,18 +402,8 @@ def test_random_samples():
             image_file_path = os.path.join(class_folder_name[c - 1], image_file_name)
             img = tf.keras.preprocessing.image.load_img(image_file_path, color_mode='grayscale')
             input_arr = tf.keras.preprocessing.image.img_to_array(img)
-            input_arr = (1. / 255) * np.array([input_arr])  # Convert single image to a batch.
+            input_arr = np.array([input_arr])  # Convert single image to a batch.
             pred = model.predict(input_arr)
-
-            # img = cv2.imread(image_file_path, cv2.IMREAD_GRAYSCALE)
-            # img = cv2.resize(img, (IMSIZE, IMSIZE))
-            # input = (1. / 255) * np.array(np.reshape(img, [IMSIZE, IMSIZE, 1]),dtype=np.float32)
-            # pred1 = model.predict(input[None,:])
-            # input=(1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]))
-            # pred = model.predict(input)
-            # interpreter.set_tensor(input_details[0]['index'], (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32))
-            # interpreter.invoke()
-            # pred = interpreter.get_tensor(output_details[0]['index'])
 
             dec = 'joker' if np.argmax(pred[0]) == 1 else 'nonjoker'
             joker_prob = pred[0][1]
@@ -434,9 +435,9 @@ def test_random_samples():
 
 
 def classify_joker_img(img: np.array, model:tf.keras.Model, interpreter, input_details, output_details):
-    """ Classify uint8 img
+    """ Classify img
 
-    :param img: input image as unit8 np.array
+    :param img: input image which should be float32 np.array with pixel values in range 0-1, i.e. 1./255 * uint8 array of original PNG
     :param interpreter: the TFLITE interpreter
     :param input_details: the input details of interpreter
     :param output_details: the output details of interpreter
@@ -444,24 +445,21 @@ def classify_joker_img(img: np.array, model:tf.keras.Model, interpreter, input_d
 
     :returns: is_joker (True/False), joker_probability (0-1), prediction[2]=[nonjoker, joker]
     """
-    USE_TFLITE=True # set true to use TFLITE model, false to use full TF model
     is_joker=None
     joker_prob=None
     pred_vector=None
+    # img2=np.array(img)
+    # inp=np.array(img2[np.newaxis,...],dtype=np.float32)
     if USE_TFLITE:
-        nchan = input_details[0]['shape'][3]
-        if model is not None and model.name=='mobilenet-roshambo':
-            img = tf.keras.applications.mobilenet.preprocess_input(img)
-            inp =np.reshape(img, [1, IMSIZE, IMSIZE, nchan])
-        else:
-            inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, nchan]), dtype=np.float32)  # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
+        # nchan = input_details[0]['shape'][3]
+        inp =  np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32)  # todo not sure about 1/255 if mobilenet has input preprocessing with uint8 input
         interpreter.set_tensor(input_details[0]['index'], inp)
         interpreter.invoke()
         pred_vector = interpreter.get_tensor(output_details[0]['index'])[0]
         joker_prob = pred_vector[1]
         is_joker = pred_vector[1] > pred_vector[0] and joker_prob > JOKER_DETECT_THRESHOLD_SCORE
     else: # use full TF model
-        inp = (1. / 255) * np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32)  # todo not sure about 1/255 if
+        inp =  np.array(np.reshape(img, [1, IMSIZE, IMSIZE, 1]), dtype=np.float32)  # todo not sure about 1/255 if
         pred=model.predict(inp)
         pred_vector = pred[0]
         joker_prob = pred_vector[1]
@@ -470,12 +468,14 @@ def classify_joker_img(img: np.array, model:tf.keras.Model, interpreter, input_d
     return is_joker, joker_prob, pred_vector
 
 
-def load_latest_model(folder=None, dialog=True):
-    """ Loads the latest trained model.  It loads the tensorflow 2 model and the tensorflow lite interpreter,
+def load_latest_model(folder=None, dialog=True, use_tflite_model=USE_TFLITE):
+    """ Loads the latest trained model.  It loads the tensorflow 2 model or the tensorflow lite interpreter, depending on
+    flag use_tflite_model
     along with input and output details for the TFLITE interpreter.
 
     :param folder: folder where TFLITE_FILE_NAME is to be found, or None to find latest one
     :param dialog: set False to raise FileNotFoundError or True to open file dialog to browse for model
+    :param use_tflite_model: set False load normal TF mode, True to load TFLITE model
 
     :returns: model, tflite_interpreter, input_details, output_details
     """
@@ -499,21 +499,29 @@ def load_latest_model(folder=None, dialog=True):
         log.error(f'no folder found in {MODEL_DIR} with {TFLITE_FILE_NAME}')
         quit(1)
     log.info(f'loading CNN model from {model_folder}')
-    model = load_model(model_folder)
-    # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
-    interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
-    interpreter.allocate_tensors()
-    # Get input and output tensors.
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+    if not use_tflite_model:
+        model = load_model(model_folder)
+        interpreter =  None
+        # Get input and output tensors.
+        input_details =None
+        output_details = None
+    else:
+        # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
+        model=None
+        interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+        interpreter.allocate_tensors()
+        # Get input and output tensors.
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
 
     return model,interpreter, input_details, output_details
 
-def measure_flops():
+def measure_flops(model=None):
     log.info('measuring Op/frame for CNN')
     from flopco_keras import FlopCoKeras
 
-    model = create_model(ask_for_comment=False)  # load_latest_model() #tf.keras.applications.ResNet101()
+    if model is None:
+        model = create_model(ask_for_comment=False)  # load_latest_model() #tf.keras.applications.ResNet101()
     flopco = FlopCoKeras(model)
 
     # log.info(f'flop counter: {str(flopco)}')
@@ -559,7 +567,7 @@ def create_model_alexnet():
     model = Sequential()
 
     # model.add(Input(shape=(None,IMSIZE,IMSIZE,3),dtype='float32', name='input'))
-    model.add(Conv2D(filters=128, kernel_size=(7, 7),
+    model.add(Conv2D(filters=128, kernel_size=(19, 19),
                      strides=(3, 3), padding='valid',
                      input_shape=(IMSIZE, IMSIZE, 1),
                      activation='relu', name='conv1'))
@@ -590,8 +598,8 @@ def create_model_alexnet():
 
     model.add(Flatten())
 
-    model.add(Dense(30, activation='relu', name='fc1'))
-    model.add(Dense(30, activation='relu', name='fc2'))
+    model.add(Dense(64, activation='relu', name='fc1'))
+    model.add(Dense(64, activation='relu', name='fc2'))
     model.add(Dropout(0.5))
 
     # Output Layer
@@ -617,20 +625,17 @@ def create_model_mobilenet():
     https://keras.io/api/applications/mobilenet/
 
     """
-    weights = None # 'imagenet'
+    weights = None
     alpha = .25  # 0.25 is smallest version with imagenet weights
     depth_multiplier = int(1)
-    dropout = 0.5  # default is .001
-    include_top = True  # set false to specify our own FC layers
+    dropout = 0.1  # default is .001
     fully_connected_layers = (128, 128)  # our FC layers
-    num_input_channels = 3 if weights == 'imagenet' else 1
-    pooling = 'avg'  # default is avg for mobilenet
-    freeze = False  # set true to freeze imagenet feature weights
-    log.info(f'creating MobileNet with weights={weights} alpha={alpha} depth_multiplier={depth_multiplier} dropout={dropout} fully_connected_layers={fully_connected_layers} pooling={pooling} frozen_imagenet_layers={freeze}')
+    pooling = 'max'  # default is avg for mobilenet
+    log.info(f'creating MobileNet with weights={weights} alpha={alpha} depth_multiplier={depth_multiplier} dropout={dropout} fully_connected_layers={fully_connected_layers} pooling={pooling}')
     model = tf.keras.applications.MobileNet(
-        input_shape=(IMSIZE, IMSIZE, num_input_channels),  # must be 3 channel input if using imagenet weights
+        input_shape=(IMSIZE, IMSIZE, 1),  # must be 3 channel input if using imagenet weights
         weights=weights,
-        include_top=include_top,
+        include_top=False,
         alpha=alpha,
         depth_multiplier=depth_multiplier,
         dropout=dropout,
@@ -639,19 +644,16 @@ def create_model_mobilenet():
         classes=2,
         classifier_activation="softmax",
     )
-    model.trainable = not freeze
+    model.trainable = True
 
-    if not include_top:  # if we add our own FC output, then we need to wrap it with input layers
-        # x=Flatten()(model.output)
-        x = GlobalAveragePooling2D()(model.output)
-        for n in fully_connected_layers:
-            x = Dense(n, activation='relu')(x)  # we add dense layers so that the model can learn more complex functions and classify for better results.
-        # Output Layer
-        output = Dense(2, activation='softmax', name='output')(x)
-        final = Model(inputs=model.inputs, outputs=output, name='joker-mobilenet')
-        return final
-    model.summary(print_fn=log.info)
-    return model
+    x=Flatten()(model.output)
+    # x = GlobalAveragePooling2D()(model.output)
+    for n in fully_connected_layers:
+        x = Dense(n, activation='relu')(x)  # we add dense layers so that the model can learn more complex functions and classify for better results.
+    # Output Layer
+    output = Dense(2, activation='softmax', name='output')(x)
+    final = Model(inputs=model.inputs, outputs=output, name='joker-mobilenet')
+    return final
 
 
 def create_model(ask_for_comment=True):
@@ -662,7 +664,7 @@ def create_model(ask_for_comment=True):
 
     :returns: model, model_folder_path
     """
-    model_type = create_model_mobilenet
+    model_type = create_model_alexnet
     new_model_folder_name = None
     if ask_for_comment:
         model_comment = input('short model comment?')
@@ -678,7 +680,7 @@ def create_model(ask_for_comment=True):
 
 def measure_latency(model_folder=None):
     log.info('measuring CNN latency in loop')
-    model, interpreter, input_details, output_details = load_latest_model()
+    model, interpreter, input_details, output_details = load_latest_model(folder=model_folder)
     nchan = input_details[0]['shape'][3]
     img = np.random.randint(0, 255, (IMSIZE, IMSIZE, nchan))
     N = 100
@@ -694,6 +696,10 @@ class PlotHistoryCallback(History):
         super().on_epoch_end(epoch, logs)
         keys = list(logs.keys())
         log.info("End epoch {} of training; got log keys: {}".format(epoch, keys))
+        s=f'End of epoch {epoch}: '
+        for k in logs.keys():
+            s+=f'{k}: {eng(logs[k])} '
+        log.info(s)
         plot_history(self.model.history, 'history')
 
 
@@ -709,6 +715,11 @@ class SGDLearningRateTracker(Callback):
 
 
 def train(args=None):
+    """ Train CNN
+
+    :param args: use to specify if just to test. Set args.train=True if training wanted.
+
+    """
     start_time = time.time()
     start_timestr = time.strftime("%Y%m%d-%H%M")
 
@@ -766,63 +777,59 @@ def train(args=None):
     log.warning('test warning')
     log.error('test error')
 
+
+
     train_batch_size = 32
-    valid_batch_size = 64
-    test_batch_size = 64
-
-    augmentation_enabled=False
-
-    color_mode = 'grayscale' if model.input_shape[3] == 1 else 'rgb'
+    valid_batch_size = 32
+    test_batch_size = 32
     train_datagen=None
-    if augmentation_enabled:
-        train_datagen = ImageDataGenerator(  # 实例化
-            rescale=1. / 255,  # todo check this
-            rotation_range=15,  # 图片随机转动的角度
-            width_shift_range=0.2,  # 图片水平偏移的幅度
-            height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
-            fill_mode='constant',
-            cval=0,  # fill edge pixels with black; default fills with long lines of color
-            zoom_range=[.9, 1.25],  # NOTE zoom >1 minifies, don't zoom in (<1) too much in to avoid losing joker part of card
-            # horizontal_flip=False,
-        )  # 随机放大或缩小
-    else:
-        train_datagen = ImageDataGenerator(rescale=1. / 255)
+    train_generator=None
+    valid_generator=None
+    test_generator=None
 
-    log.info('making training generator')
-    train_generator = train_datagen.flow_from_directory(
-        TRAIN_DATA_FOLDER + '/train/',
-        target_size=(IMSIZE, IMSIZE),
-        batch_size=train_batch_size,
-        class_mode='categorical',
-        color_mode=color_mode,
-        # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
-        shuffle=True,
-        interpolation='nearest',
-    )
+    augmentation_enabled=True
 
-    log.info('making validation generator')
+    color_mode = 'grayscale'
+    train_datagen=None
+    if args.train:
+        if augmentation_enabled:
+            train_datagen = ImageDataGenerator(  # 实例化
+                rescale=1. / 255,  # we don't rescale, just leave 0-255
+                rotation_range=15,  # 图片随机转动的角度
+                width_shift_range=0.2,  # 图片水平偏移的幅度
+                height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
+                fill_mode='constant',
+                cval=0,  # fill edge pixels with black; default fills with long lines of color
+                zoom_range=[.9, 1.25],  # NOTE zoom >1 minifies, don't zoom in (<1) too much in to avoid losing joker part of card
+                # horizontal_flip=False,
+            )  # 随机放大或缩小
+        else:
+            # train_datagen = ImageDataGenerator(rescale=1. / 255)
+            train_datagen = ImageDataGenerator(rescale=1. / 255)
 
-    valid_generator = train_datagen.flow_from_directory(
-        TRAIN_DATA_FOLDER + '/valid/',
-        target_size=(IMSIZE, IMSIZE),
-        batch_size=valid_batch_size,
-        class_mode='categorical',
-        color_mode=color_mode,
-        shuffle=True,  # irrelevant for validtion
-        interpolation='nearest',
-    )
+        log.info('making training generator')
+        train_generator = train_datagen.flow_from_directory(
+            TRAIN_DATA_FOLDER + '/train/',
+            target_size=(IMSIZE, IMSIZE),
+            batch_size=train_batch_size,
+            class_mode='categorical',
+            color_mode=color_mode,
+            # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
+            shuffle=True,
+            interpolation='nearest',
+        )
 
-    log.info('making test generator')
-    test_datagen = ImageDataGenerator(rescale=1. / 255)
-    test_generator = test_datagen.flow_from_directory(  # 实例化
-        TRAIN_DATA_FOLDER + '/test/',
-        target_size=(IMSIZE, IMSIZE),
-        batch_size=test_batch_size,
-        class_mode='categorical',
-        color_mode=color_mode,
-        shuffle=False,
-        interpolation='nearest',
-    )  # IMPORTANT shuffle=False here or model.predict will NOT match GT of test generator in test_generator.labels!
+        log.info('making validation generator')
+
+        valid_generator = train_datagen.flow_from_directory(
+            TRAIN_DATA_FOLDER + '/valid/',
+            target_size=(IMSIZE, IMSIZE),
+            batch_size=valid_batch_size,
+            class_mode='categorical',
+            color_mode=color_mode,
+            shuffle=True,  # irrelevant for validtion
+            interpolation='nearest',
+        )
 
     # Path('test_gen_samples').mkdir(parents=True, exist_ok=True)
 
@@ -837,53 +844,56 @@ def train(args=None):
                  f' {gen.samples} samples:\t{num_nonjoker}/{pc(num_nonjoker):.3f}% nonjoker,\t{num_joker}/{pc(num_joker):.3f}% joker\n')
 
 
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.01,
-        decay_steps=train_generator.n // train_batch_size,  # every epoch decrease learning rate
-        decay_rate=0.9)
-
-
-    optimizer = tf.keras.optimizers.SGD(momentum=.9, learning_rate=lr_schedule)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
-    loss = tf.keras.losses.CategoricalCrossentropy()
-    model.compile(loss=loss,
-                  optimizer=optimizer,
-                  metrics=['categorical_accuracy'])
-    model.summary(print_fn=log.info)
-
-    stop_early = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
-    save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
-    # Profile from batches 10 to 15
-    # tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log', profile_batch='10, 15')
-    plot_callback = PlotHistoryCallback()
-    learning_rate_callback = SGDLearningRateTracker()
 
     if args.train:
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=0.1,
+            decay_steps=train_generator.n // train_batch_size,  # every epoch decrease learning rate
+            decay_rate=0.95)
+        optimizer = tf.keras.optimizers.SGD(momentum=.9, learning_rate=lr_schedule)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
+        # loss = tf.keras.losses.CategoricalCrossentropy()
+        nsamp = train_generator.samples
+        num_nonjoker, num_joker = np.bincount(train_generator.labels)
+        alpha = float(num_nonjoker)/nsamp
+        gamma=2
+        loss = tfa.losses.SigmoidFocalCrossEntropy(alpha=alpha,gamma=gamma,from_logits=False)
+        model.compile(loss=loss,
+                      optimizer=optimizer,
+                      metrics=['categorical_accuracy'])
+        model.summary(print_fn=log.info)
+
+        class_weight = None # {0:float(num_joker)/nsamp, 1:float(num_nonjoker)/nsamp} # {0: .5, 1: .5}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers?
+        stop_early = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
+        save_checkpoint = ModelCheckpoint(checkpoint_filename_path, save_best_only=True, monitor='val_loss', mode='min')
+        # Profile from batches 10 to 15
+        # tb_callback = tf.keras.callbacks.TensorBoard(log_dir='tb_profiler_log', profile_batch='10, 15')
+        plot_callback = PlotHistoryCallback()
+        learning_rate_callback = SGDLearningRateTracker()
+
         log.info('starting training')
         epochs = 300
-
-        class_weight = {0: .5, 1: .5}  # not sure about this weighting. should we weight the nonjoker more heavily to avoid false positive jokers? The ratio is about 4:1 nonjoker/joker samples.
-        log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs optimizer={optimizer} and train_batch_size={train_batch_size} augmenation_enabled={augmentation_enabled}')
+        steps_per_epoch = 300 # None # 300 # use to reduced # times batches are sampled per epoch. Normally it would be # samples/batch size, e.g. 100k/64
+        log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs steps_per_epoch={steps_per_epoch} optimizer={optimizer} with alpha={alpha} gamma={gamma} and train_batch_size={train_batch_size} augmenation_enabled={augmentation_enabled}')
         history = None
         log.info(f'learning rate schedule: {lr_schedule}')
         print_datagen_summary(train_generator)
         print_datagen_summary(valid_generator)
-        print_datagen_summary(test_generator)
-        os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
+        os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1' # to handle interrupt and save model
         try:
-            history = model.fit(train_generator,  # todo back to train generator
-                                # steps_per_epoch=150,
+            history = model.fit(train_generator,
+                                steps_per_epoch=steps_per_epoch,
                                 epochs=epochs, verbose=1,
                                 validation_data=valid_generator,
-                                # validation_steps=25,
+                                validation_steps=None,
                                 callbacks=[stop_early, save_checkpoint, plot_callback, learning_rate_callback],
-                                max_queue_size=20,
+                                max_queue_size=10,
                                 use_multiprocessing=False,
                                 # shuffle = True, # shuffle not valid for folder data generators
                                 workers=8,
-                                class_weight=class_weight  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
+                                # class_weight=class_weight  # weight nonjokers more to reduce false positives where nonjokers are detected as jokers poking the finger out
                                 # it is better to avoid poking out finger until a joker is definitely detected
                                 )
-            plot_history(history, start_timestr)
+            plot_history(history, start_timestr,model_folder)
             training_history_filename = os.path.join(LOG_DIR, 'training_history' + '-' + start_timestr + '.npy')
             np.save(training_history_filename, history.history)
             log.info(f'Done with model.fit; history is \n{history.history} and is saved as {training_history_filename}')
@@ -906,10 +916,40 @@ def train(args=None):
 
     log.info('evaluating accuracy')
     # test_generator.reset()
+    log.info('making test generator')
+    if augmentation_enabled:
+        test_datagen = ImageDataGenerator(  # 实例化
+            rescale=1. / 255,  # we don't rescale, just leave 0-255
+            rotation_range=15,  # 图片随机转动的角度
+            width_shift_range=0.2,  # 图片水平偏移的幅度
+            height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
+            fill_mode='constant',
+            cval=0,  # fill edge pixels with black; default fills with long lines of color
+            zoom_range=[.9, 1.25],  # NOTE zoom >1 minifies, don't zoom in (<1) too much in to avoid losing joker part of card
+            # horizontal_flip=False,
+        )  # 随机放大或缩小
+    else:
+        # train_datagen = ImageDataGenerator(rescale=1. / 255)
+        test_datagen = ImageDataGenerator(rescale=1. / 255)
+
+    log.info('making test generator')
+    test_generator = test_datagen.flow_from_directory(
+        TRAIN_DATA_FOLDER + '/test/',
+        target_size=(IMSIZE, IMSIZE),
+        batch_size=train_batch_size,
+        class_mode='categorical',
+        color_mode=color_mode,
+        # save_to_dir='/tmp/augmented_images',save_prefix='aug', # creates zillions of samples, watch out! make the folder before running or it will not work
+        shuffle=False,
+        interpolation='nearest',
+    )
+
+
     gen = test_generator
-    gen.reset()
-    loss, acc = model.evaluate(gen, verbose=1)
-    log.info(f'On test set {gen.directory}  loss={loss:.3f}, acc={acc:.4f}')
+    print_datagen_summary(gen)
+    # gen.reset()
+    # loss, acc = model.evaluate(gen, verbose=1)
+    # log.info(f'On test set {gen.directory}  loss={loss:.3f}, acc={acc:.4f}')
     gen.reset()
     y_output = model.predict(gen, verbose=1)  # matrix of Nx2 with each row being the nonjoker/joker score
     y_pred = np.argmax(y_output, axis=1)  # vector of predicted classes 0/1 for nonjoker/joker
@@ -925,17 +965,18 @@ def train(args=None):
     # disp.ax_.set_title('joker/nonjoker confusion matrix')
 
     try:
-        measure_flops()
+        measure_flops(model)
     except Exception as e:
         log.error(f'Caught {e} measuring flops')
     measure_latency(model_folder)
+
     elapsed_time_min = (time.time() - start_time) / 60
     if args.train:
         log.info(f'**** done training after {elapsed_time_min:4.1f}m; model saved in {model_folder}.'
                  f'\nSee {LOG_FILE} for logging output for this run.')
 
 
-def plot_history(history, start_timestr):
+def plot_history(history, start_timestr, model_folder=LOG_DIR):
     if history is not None:
         try:
             # TODO make subplots and make axis log with times in ms, not log ms
@@ -947,7 +988,7 @@ def plot_history(history, start_timestr):
             plt.ylabel('accuracy')
             plt.xlabel('epoch')
             plt.legend(['train', 'validate'], loc='upper left')
-            plt.savefig(os.path.join(LOG_DIR, 'accuracy' + '-' + start_timestr + '.png'))
+            plt.savefig(os.path.join(model_folder, 'accuracy' + '-' + start_timestr + '.png'))
             plt.show()
             # summarize history for loss
             plt.figure('loss')
@@ -957,7 +998,7 @@ def plot_history(history, start_timestr):
             plt.ylabel('loss')
             plt.xlabel('epoch')
             plt.legend(['train', 'validate'], loc='upper left')
-            plt.savefig(os.path.join(LOG_DIR, 'loss' + '-' + start_timestr + '.png'))
+            plt.savefig(os.path.join(model_folder, 'loss' + '-' + start_timestr + '.png'))
             plt.show()
         except KeyError as k:
             log.warning('could not plot, caught {k}, history.history.keys()={history.history.keys()} ')
@@ -981,7 +1022,7 @@ def generate_augmented_images(args):
         quit(1)
 
     train_datagen = ImageDataGenerator(  # 实例化
-        rescale=1. / 256,  # todo check this
+        #rescale=1. / 255,  # todo check this
         rotation_range=15,  # 图片随机转动的角度
         width_shift_range=0.2,  # 图片水平偏移的幅度
         height_shift_range=0.2,  # don't shift too much vertically to avoid losing top of card
@@ -1015,17 +1056,21 @@ def generate_augmented_images(args):
 
     i = 0
     cv2.namedWindow('original', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('original', 600, 600)
-    cv2.namedWindow('augmented', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('augmented', 600, 600)
-    cv2.moveWindow('augmented',0,600)
+    cv2_dim = 300
+    cv2.resizeWindow('original', cv2_dim, cv2_dim)
+    for i in range(aug_factor):
+        cv2.namedWindow(f'aug {i}', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(f'aug {i}', cv2_dim, cv2_dim)
+        cv2.moveWindow(f'aug {i}', (i%5) * cv2_dim, (i//5) * (1+cv2_dim))
     nsaved=0
+    ninput=0
     for f in tqdm(files):
-        showit=nsaved%100==0
+        showit=ninput%100==0
+        ninput+=1
         img = cv2.imread(f)
         x = img_to_array(img)
         if showit:
-            cv2.imshow('original', (1/256.)*x)
+            cv2.imshow('original', (1/255.)*x)
         x = x.reshape((1,) + x.shape)
         i=0
         base = os.path.splitext(os.path.split(f)[-1])[0] # e.g. /a/b/c/d/0900111.png gives 0900111
@@ -1034,13 +1079,14 @@ def generate_augmented_images(args):
             nsaved+=1
             img_aug=batch[0]
             if showit:
-                cv2.imshow('augmented', img_aug)
-            k = cv2.waitKey(15) & 0xff
-            if k == ord('x') or k == ord('q'):
-                log.info(f'saved {nsaved} augmented images to {aug_folder} from {src_data_folder}')
-                quit(0)
-            if i == aug_factor:
+                cv2.imshow(f'aug {i-1}', (1/255.)*img_aug)
+                k = cv2.waitKey(15) & 0xff
+                if k == ord('x') or k == ord('q'):
+                    log.info(f'saved {nsaved} augmented images to {aug_folder} from {src_data_folder}')
+                    quit(0)
+            if i >= aug_factor:
                 break
+
     log.info(f'saved {nsaved} augmented images to {aug_folder} from {src_data_folder}')
 
 args = None  # if run as module

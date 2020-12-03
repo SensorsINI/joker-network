@@ -1,5 +1,6 @@
 keras
 tensorflow
+tensorflow-addons # https://github.com/tensorflow/addons - for focalloss
 opencv-python
 numpy
 pyserial

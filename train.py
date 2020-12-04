@@ -4,6 +4,7 @@
 # see dataset_utils for methods to create the training split folders
 # author: Tobi Delbruck
 import argparse
+import collections
 import datetime
 import glob
 import shutil
@@ -196,6 +197,7 @@ def riffle_test(args):
               'n moves to nonjoker folder\n'
               'g goes to selected frame (by dialog for frame number)\n'
               'f/r fastfowards/rewinds backwards\n'
+              'u undues last move of joker/nonjoker\n'
               't toggles between pausing at possible joker|pausing only at certain jokers|not pausing\n'
               'enter selects new playback folder\n'
               'h print help')
@@ -209,24 +211,28 @@ def riffle_test(args):
     Path(DATA_FOLDER).mkdir(parents=True, exist_ok=True)
     jokers_list_file = open(os.path.join(LOG_DIR, f'joker-file-list-{start_timestr}.txt'), 'w')
     nonjokers_list_file = open(os.path.join(LOG_DIR, f'nonjoker-file-list-{start_timestr}.txt'), 'w')
+    undo_list=collections.deque(maxlen=5)
 
-    def move_with_backup(src,dest):
-        if not os.path.isdir(dest):
-            raise Exception(f'destination {dest} should be a directory')
+    def move_with_backup(src, dest_folder):
+        if not os.path.isdir(dest_folder):
+            raise Exception(f'destination {dest_folder} should be a directory')
+        dest_file_path=os.path.join(dest_folder, src)
         try:
-            shutil.move(src, dest)
-        except Exception as e:
+            shutil.move(src, dest_file_path)
+            undo_list.append((src,dest_file_path))
+        except OSError as e:
             idx=1
             s=os.path.splitext(src)
             base=s[0]
             suf=s[-1]
             while True:
-                newfilename=os.path.join(dest, f'{base}_{idx}{suf}')
+                newfilename=os.path.join(dest_folder, f'{base}_{idx}{suf}')
                 if os.path.isfile(newfilename):
                     idx+=1
                     continue
                 shutil.move(src, newfilename)
                 log.info(f'moved {src}->{newfilename}')
+                undo_list.append((src,newfilename))
                 break
 
     folder = os.path.join(SRC_DATA_FOLDER, '..')
@@ -239,6 +245,18 @@ def riffle_test(args):
         if val < minval: return minval
         if val > maxval: return maxval
         return val
+
+    def undo():
+        src=None
+        dest=None
+        try:
+            src,dest=undo_list.pop()
+            shutil.move(dest,src)
+            log.info(f'undid by moving {dest}->{src}')
+        except IndexError:
+            log.warning('nothing to undo')
+        except OSError as e:
+            log.error(f'could not undo by moving {src}->{dest}: caught {e}')
 
     while True:
         root = Tk()
@@ -258,9 +276,13 @@ def riffle_test(args):
             with tqdm(total=nfiles, file=sys.stdout) as pbar:
                 while True:
                     idx = idx + (1 if mode == 'fwd' or mode == 'step-fwd' else -1)
-                    pbar.update(idx)
+                    if idx<0:
+                        idx=len(ls)-1
+                        time.sleep(.5)
                     if idx >= len(ls):
-                        raise GetOutOfLoop
+                        idx=0
+                        time.sleep(.5)
+                    pbar.update(idx)
                     image_file_path = ls[idx]
                     if os.path.isdir(image_file_path):
                         continue
@@ -300,7 +322,7 @@ def riffle_test(args):
                             # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                             cv2.imshow('frame', cv2_arr)
-                        d=15 # ms
+                        d=33 # ms
                         if is_joker and pause_mode==1:
                             d=0
                         elif (joker_prob > threshold_pause_prob and pause_mode==0) or mode!='fwd':
@@ -324,18 +346,21 @@ def riffle_test(args):
                             raise GetOutOfLoop  # choose new folder
                         elif k == ord('h'):
                             print_help()
+                        elif k == ord('u'):
+                            undo()
                         elif k == ord('t'):
                             pause_mode += 1
                             if pause_mode > 2:
                                 pause_mode = 0
                             print(f'pause mode: {pause_modes[pause_mode]}')
-                        elif k == ord('j'):
-                            log.info(f'moving {image_file_path} to {JOKERS_FOLDER}')
+                        elif k == ord('j') or k==ord('n'):
+                            dest_folder=JOKERS_FOLDER if k==ord('j') else NONJOKERS_FOLDER
+                            src_file_path=os.path.join(folder,image_file_path)
+                            log.info(f'moving {src_file_path} to {dest_folder}')
                             try:
-                                move_with_backup(image_file_path, JOKERS_FOLDER)
+                                move_with_backup(src_file_path, dest_folder)
                             except Exception as e:
                                 log.error(f'could not move {image_file_path}->{JOKERS_FOLDER}: caught {e}')
-
                         elif k==ord('g'):
                             idx=clamp(simpledialog.askinteger('go to frame', 'frame number?'),0,nfiles-1)
                         elif k==ord('f'):
@@ -344,13 +369,6 @@ def riffle_test(args):
                         elif k==ord('r'):
                             idx = clamp(idx - 100, 0, nfiles-1)
                             log.info('fastforward')
-                        elif k == ord('n'):
-                            log.info(f'moving {image_file_path} to {NONJOKERS_FOLDER}')
-                            try:
-                                move_with_backup(image_file_path, NONJOKERS_FOLDER)
-                            except Exception as e:
-                                log.error(f'could not move {image_file_path}->{NONJOKERS_FOLDER}: caught {e}')
-
                         elif k == 255 or k == ord(' '):  # no key or space
                             mode = 'fwd'
                             continue
@@ -849,14 +867,14 @@ def train(args=None):
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=0.1,
             decay_steps=train_generator.n // train_batch_size,  # every epoch decrease learning rate
-            decay_rate=0.95)
+            decay_rate=0.9)
         optimizer = tf.keras.optimizers.SGD(momentum=.9, learning_rate=lr_schedule)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
         # loss = tf.keras.losses.CategoricalCrossentropy()
         nsamp = train_generator.samples
         num_nonjoker, num_joker = np.bincount(train_generator.labels)
-        alpha = float(num_nonjoker)/nsamp
-        gamma=2
-        loss = tfa.losses.SigmoidFocalCrossEntropy(alpha=alpha,gamma=gamma,from_logits=False)
+        focalloss_alpha = 0.25 # float(num_nonjoker)/nsamp
+        flocalloss_gamma=2
+        loss = tfa.losses.SigmoidFocalCrossEntropy(alpha=focalloss_alpha,gamma=flocalloss_gamma,from_logits=False)
         model.compile(loss=loss,
                       optimizer=optimizer,
                       metrics=['categorical_accuracy'])
@@ -873,7 +891,7 @@ def train(args=None):
         log.info('starting training')
         epochs = 300
         steps_per_epoch = 300 # None # 300 # use to reduced # times batches are sampled per epoch. Normally it would be # samples/batch size, e.g. 100k/64
-        log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs steps_per_epoch={steps_per_epoch} optimizer={optimizer} with alpha={alpha} gamma={gamma} and train_batch_size={train_batch_size} augmenation_enabled={augmentation_enabled}')
+        log.info(f'Training uses class_weight={class_weight} (nonjoker/joker) with max {epochs} epochs steps_per_epoch={steps_per_epoch} optimizer={optimizer} with focalloss_alpha={focalloss_alpha} flocalloss_gamma={flocalloss_gamma} and train_batch_size={train_batch_size} augmenation_enabled={augmentation_enabled}')
         history = None
         log.info(f'learning rate schedule: {lr_schedule}')
         print_datagen_summary(train_generator)

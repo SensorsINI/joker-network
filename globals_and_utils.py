@@ -15,6 +15,51 @@ import atexit
 from engineering_notation import EngNumber  as eng  # only from pip
 from matplotlib import pyplot as plt
 import numpy as np
+# https://stackoverflow.com/questions/35851281/python-finding-the-users-downloads-folder
+import os
+if os.name == 'nt':
+    import ctypes
+    from ctypes import windll, wintypes
+    from uuid import UUID
+
+    # ctypes GUID copied from MSDN sample code
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", wintypes.BYTE * 8)
+        ]
+
+        def __init__(self, uuidstr):
+            uuid = UUID(uuidstr)
+            ctypes.Structure.__init__(self)
+            self.Data1, self.Data2, self.Data3, \
+            self.Data4[0], self.Data4[1], rest = uuid.fields
+            for i in range(2, 8):
+                self.Data4[i] = rest>>(8-i-1)*8 & 0xff
+
+    SHGetKnownFolderPath = windll.shell32.SHGetKnownFolderPath
+    SHGetKnownFolderPath.argtypes = [
+        ctypes.POINTER(GUID), wintypes.DWORD,
+        wintypes.HANDLE, ctypes.POINTER(ctypes.c_wchar_p)
+    ]
+
+    def _get_known_folder_path(uuidstr):
+        pathptr = ctypes.c_wchar_p()
+        guid = GUID(uuidstr)
+        if SHGetKnownFolderPath(ctypes.byref(guid), 0, 0, ctypes.byref(pathptr)):
+            raise ctypes.WinError()
+        return pathptr.value
+
+    FOLDERID_Download = '{374DE290-123F-4565-9164-39C4925E467B}'
+
+    def get_download_folder():
+        return _get_known_folder_path(FOLDERID_Download)
+else:
+    def get_download_folder():
+        home = os.path.expanduser("~")
+        return os.path.join(home, "Downloads")
 
 LOGGING_LEVEL = logging.INFO
 PORT = 12000  # UDP port used to send frames from producer to consumer
@@ -30,7 +75,7 @@ MIN_PRODUCER_FRAME_INTERVAL_MS=5.0 # inference takes about 3ms and normalization
         # passed since last frame was sent. That way, we make sure not to flood the consumer
 MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
-ROOT_DATA_FOLDER= os.path.join(os.path.expanduser("~"),"Downloads",'trixsyDataset')
+ROOT_DATA_FOLDER= os.path.join(get_download_folder(),'trixsyDataset') # does not properly find the Downloads folder under Windows if not on same disk as Windows
 
 DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'data') #/home/tobi/Downloads/trixsyDataset/data' #'data'  # new samples stored here
 NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 3 # when joker detected by consumer, this many random previous nonjoker frames are also saved
@@ -258,3 +303,5 @@ def write_next_image(dir:str, idx:int, img):
 
 # this will print all the timer values upon termination of any program that imported this file
 atexit.register(print_timing_info)
+
+

@@ -216,18 +216,22 @@ def riffle_test(args):
     def move_with_backup(src, dest_folder):
         if not os.path.isdir(dest_folder):
             raise Exception(f'destination {dest_folder} should be a directory')
-        dest_file_path=os.path.join(dest_folder, src)
+        src_base=os.path.split(src)[-1]
+        dest_file_path=os.path.join(dest_folder, src_base)
         try:
             shutil.move(src, dest_file_path)
             undo_list.append((src,dest_file_path))
+            log.info(f'moved {src}->{dest_file_path}')
         except OSError as e:
+            log.info(f'{dest_file_path} already exists, moving to a new filename...')
             idx=1
             s=os.path.splitext(src)
-            base=s[0]
+            src_base=s[0]
             suf=s[-1]
             while True:
-                newfilename=os.path.join(dest_folder, f'{base}_{idx}{suf}')
+                newfilename=os.path.join(dest_folder, f'{src_base}_{idx}{suf}')
                 if os.path.isfile(newfilename):
+                    log.info(f'{newfilename} already exists...')
                     idx+=1
                     continue
                 shutil.move(src, newfilename)
@@ -267,7 +271,7 @@ def riffle_test(args):
             quit(1)
         os.chdir(folder)
         ls = os.listdir()
-        ls = sorted(ls)
+        ls = sorted(ls,key=lambda f: os.stat(f).st_mtime)
         nfiles = len(ls)
         mode = 'fwd'
         idx = -1
@@ -322,7 +326,7 @@ def riffle_test(args):
                             # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                             cv2.imshow('frame', cv2_arr)
-                        d=33 # ms
+                        d=50 # ms
                         if is_joker and pause_mode==1:
                             d=0
                         elif (joker_prob > threshold_pause_prob and pause_mode==0) or mode!='fwd':
@@ -362,14 +366,22 @@ def riffle_test(args):
                             except Exception as e:
                                 log.error(f'could not move {image_file_path}->{JOKERS_FOLDER}: caught {e}')
                         elif k==ord('g'):
-                            idx=clamp(simpledialog.askinteger('go to frame', 'frame number?'),0,nfiles-1)
+                            idx=clamp(simpledialog.askinteger('go to frame', 'frame  number?'),0,nfiles-1)
                         elif k==ord('f'):
                             idx=clamp(idx+100,0,nfiles-1)
                             log.info('fastforward')
                         elif k==ord('r'):
                             idx = clamp(idx - 100, 0, nfiles-1)
                             log.info('fastforward')
-                        elif k == 255 or k == ord(' '):  # no key or space
+                        elif k == ord(' '):  # space
+                            if mode == 'fwd':
+                                mode='step-fwd'
+                            elif mode=='step-fwd':
+                                mode='fwd'
+                            else:
+                                mode='fwd'
+                            continue
+                        elif k == 255:  # no key or space
                             mode = 'fwd'
                             continue
                     except Exception as e:
@@ -644,7 +656,7 @@ def create_model_mobilenet():
 
     """
     weights = None
-    alpha = .25  # 0.25 is smallest version with imagenet weights
+    alpha = .5  # 0.25 is smallest version with imagenet weights
     depth_multiplier = int(1)
     dropout = 0.1  # default is .001
     fully_connected_layers = (128, 128)  # our FC layers
@@ -865,16 +877,17 @@ def train(args=None):
 
     if args.train:
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=0.1,
+            initial_learning_rate=0.01,
             decay_steps=train_generator.n // train_batch_size,  # every epoch decrease learning rate
             decay_rate=0.9)
         optimizer = tf.keras.optimizers.SGD(momentum=.9, learning_rate=lr_schedule)  # alessandro: SGD gives higher accuracy than Adam but include a momentuum
-        # loss = tf.keras.losses.CategoricalCrossentropy()
+        loss = tf.keras.losses.CategoricalCrossentropy()
         nsamp = train_generator.samples
+
         num_nonjoker, num_joker = np.bincount(train_generator.labels)
         focalloss_alpha = 0.25 # float(num_nonjoker)/nsamp
         flocalloss_gamma=2
-        loss = tfa.losses.SigmoidFocalCrossEntropy(alpha=focalloss_alpha,gamma=flocalloss_gamma,from_logits=False)
+        # loss = tfa.losses.SigmoidFocalCrossEntropy(alpha=focalloss_alpha,gamma=flocalloss_gamma,from_logits=False)
         model.compile(loss=loss,
                       optimizer=optimizer,
                       metrics=['categorical_accuracy'])

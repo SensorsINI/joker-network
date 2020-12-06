@@ -149,10 +149,14 @@ def producer(args):
                 with Timer('normalization'):
                     # if frame is None: # debug timing
                         # take DVS coordinates and scale x and y to output frame dimensions using flooring math
-                        events[:,1]=np.floor(events[:,1]*xfac)
-                        events[:,2]=np.floor(events[:,2]*yfac)
-                        frame, _, _ = np.histogram2d(events[:, 2], events[:, 1], bins=(IMSIZE, IMSIZE), range=histrange)
-                        fmax_count=np.max(frame)
+                        xs=np.floor(events[:,1]*xfac)
+                        ys=np.floor(events[:,2]*yfac)
+                        ts=events[:,0]
+                        vflow_ppus=0.1 # estimate vertical flow, pixels per microsecond
+                        dt=ts-t[0]
+                        ys=ys+vflow_ppus*dt
+                        frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
+                        fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
                         frame[frame > args.clip_count]=args.clip_count
                         frame= (255. / args.clip_count) * frame # max pixel will have value 255
 

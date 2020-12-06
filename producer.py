@@ -111,6 +111,7 @@ def producer(args):
     save_next_frame=(not space_toggles_recording and not spacebar_records) # if we don't supply the option, it will be False and we want to then save all frames
     saved_events=[]
 
+    vflow_ppus=5e-3 # estimate vertical flow, pixels per microsecond
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_frame_rate_data_file_path = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
@@ -152,9 +153,9 @@ def producer(args):
                         xs=np.floor(events[:,1]*xfac)
                         ys=np.floor(events[:,2]*yfac)
                         ts=events[:,0]
-                        vflow_ppus=0.1 # estimate vertical flow, pixels per microsecond
-                        dt=ts-t[0]
-                        ys=ys+vflow_ppus*dt
+                        if vflow_ppus!=0:
+                            dt=ts-t[0]
+                            ys=ys-vflow_ppus*dt
                         frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
                         fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
                         frame[frame > args.clip_count]=args.clip_count

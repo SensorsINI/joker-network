@@ -270,9 +270,11 @@ def riffle_test(args):
             log.info('aborted')
             quit(1)
         os.chdir(folder)
+        log.info(f'listing contents of {folder} ')
         ls = os.listdir()
-        ls = sorted(ls,key=lambda f: os.stat(f).st_mtime)
         nfiles = len(ls)
+        log.info(f'sorting {nfiles} samples by date')
+        ls = sorted(ls,key=lambda f: os.stat(f).st_mtime)
         mode = 'fwd'
         idx = -1
 
@@ -321,8 +323,8 @@ def riffle_test(args):
                         is_joker = joker_prob > JOKER_DETECT_THRESHOLD_SCORE
                         if not args.show_only_jokers or (args.show_only_jokers and is_joker):
                             # cv2_arr = np.array(img_arr, dtype=np.uint8)  # make sure it is an np.array, not EagerTensor that cv2 cannot display
-                            cv2_arr = img_arr  # make sure it is an np.array, not EagerTensor that cv2 cannot display
-                            cv2.putText(cv2_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+                            cv2_arr = 1-img_arr  # make sure it is an np.array, not EagerTensor that cv2 cannot display
+                            cv2.putText(cv2_arr, f'{image_file_path}: {joker_prob * 100:4.1f}% joker', (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 1)
                             # print('\a'q)  # beep on some terminals https://stackoverflow.com/questions/6537481/python-making-a-beep-noise
                             cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
                             cv2.imshow('frame', cv2_arr)

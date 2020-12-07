@@ -111,7 +111,7 @@ def producer(args):
     save_next_frame=(not space_toggles_recording and not spacebar_records) # if we don't supply the option, it will be False and we want to then save all frames
     saved_events=[]
 
-    vflow_ppus=5e-3 # estimate vertical flow, pixels per microsecond
+    vflow_ppus=0 # estimate vertical flow, pixels per microsecond, positive.  Does not really help since mainly informative frames are when card is exposed
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_frame_rate_data_file_path = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
@@ -157,14 +157,14 @@ def producer(args):
                             dt=ts-t[0]
                             ys=ys-vflow_ppus*dt
                         frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
-                        fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
+                        # fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
                         frame[frame > args.clip_count]=args.clip_count
                         frame= (255. / args.clip_count) * frame # max pixel will have value 255
 
                 # statistics
-                focc=np.count_nonzero(frame)
+                # focc=np.count_nonzero(frame)
                 frame=frame.astype('uint8')
-                log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
+                # log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
 
                 with Timer('send frame'):
                     time_last_frame_sent=time.time()
@@ -184,7 +184,7 @@ def producer(args):
                             # min = np.min(frame)
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-                            cv2.imshow('DVS', 1-frame.astype('float')/255)
+                            cv2.imshow('DVS', 1-(1/256.)*frame)
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', 600, 600)
                                 cv2_resized = True

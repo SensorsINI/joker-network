@@ -8,6 +8,10 @@ import sys
 import time
 from pathlib import Path
 from subprocess import TimeoutExpired
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0' # all TF messages
+
+import tensorflow as tf
 
 import cv2
 import numpy as np

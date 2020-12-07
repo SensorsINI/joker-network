@@ -15,8 +15,9 @@ See https://sensors.ini.uzh.ch for latest news and more demos
 # Requirements:
 Test environment:
 
- - OS: Fully tested on Ubuntu 18.04, partially on Mac OSX 10.15.7 
+ - OS: Fully tested on Ubuntu 18.04, partially on Mac OSX 10.15.7, can train on Windows 10 but not run pyaer to run demo
  - python: 3.8
+ - CUDA toolkit 10.1 https://developer.nvidia.com/cuda-toolkit-archive (you might need to downgrade from latest v10.2 if dymamic library cannot load, TF2.3.1 is only compatible with CUDA 10.1 as of this writing)
  - tensorflow: 2.3.1
  - Keras: 2.3.1
  - pyaer https://github.com/duguyue100/pyaer

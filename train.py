@@ -21,7 +21,7 @@ from tkinter import filedialog, simpledialog
 import PIL
 import tensorflow as tf
 import tensorflow.python.keras
-from classification_models.keras import Classifiers
+# from classification_models.keras import Classifiers
 import tensorflow_addons as tfa
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 # from alessandro: use keras from tensorflow, not from keras directly
@@ -370,10 +370,10 @@ def riffle_test(args):
                         elif k==ord('g'):
                             idx=clamp(simpledialog.askinteger('go to frame', 'frame  number?'),0,nfiles-1)
                         elif k==ord('f'):
-                            idx=clamp(idx+100,0,nfiles-1)
+                            idx=clamp(idx+50,0,nfiles-1)
                             log.info('fastforward')
                         elif k==ord('r'):
-                            idx = clamp(idx - 100, 0, nfiles-1)
+                            idx = clamp(idx - 50, 0, nfiles-1)
                             log.info('fastforward')
                         elif k == ord(' '):  # space
                             if mode == 'fwd':
@@ -657,7 +657,7 @@ def create_model_mobilenet():
     https://keras.io/api/applications/mobilenet/
 
     """
-    weights = None
+    weights = None # for 'imagenet' must install classification_models package
     alpha = .5  # 0.25 is smallest version with imagenet weights
     depth_multiplier = int(1)
     dropout = 0.1  # default is .001

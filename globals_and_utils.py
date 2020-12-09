@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from subprocess import TimeoutExpired
 import os
+from typing import Optional
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0' # all TF messages
 
 import tensorflow as tf
@@ -73,7 +75,7 @@ UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / m
 EVENT_COUNT_PER_FRAME = 2300  # events per frame
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for colleting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
-MIN_PRODUCER_FRAME_INTERVAL_MS=5.0 # inference takes about 3ms and normalization takes 1ms, hence at least 2ms
+MIN_PRODUCER_FRAME_INTERVAL_MS=8.0 # inference takes about 3ms and normalization takes 1ms, hence at least 2ms
         # limit rate that we send frames to about what the GPU can manage for inference time
         # after we collect sufficient events, we don't bother to normalize and send them unless this time has
         # passed since last frame was sent. That way, we make sure not to flood the consumer
@@ -229,20 +231,29 @@ class Timer:
             self.interval=self.delay
         times[self.timer_name].append(self.interval)
 
-    def print_timing_info(self,stream=None):
-        a = np.array(times[self.timer_name])
-        if len(a)==0:
-            log.error(f'Timer {self.timer_name} has no statistics; was it used without a with statement?')
+    def print_timing_info(self, logger=None):
+        """ Prints the timing information accumulated for this Timer
+
+        :param logger: write to the supplied logger, otherwise use the built-in logger
+        """
+        if len(times)==0:
+            log.error(f'Timer {self.timer_name} has no statistics; was it used without a "with" statement?')
             return
+        a = np.array(times[self.timer_name])
         timing_mean = np.mean(a) # todo use built in print method for timer
         timing_std = np.std(a)
         timing_median = np.median(a)
         timing_min = np.min(a)
         timing_max = np.max(a)
-        log.info('{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(self.timer_name, len(a),
-                                                                          eng(timing_mean), eng(timing_std),
-                                                                          eng(timing_median), eng(timing_min),
-                                                                          eng(timing_max)))
+        s='{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(self.timer_name, len(a),
+                                                                      eng(timing_mean), eng(timing_std),
+                                                                      eng(timing_median), eng(timing_min),
+                                                                      eng(timing_max))
+
+        if logger is not None:
+            logger.info(s)
+        else:
+            log.info(s)
 
 def print_timing_info():
     for k,v in times.items():  # k is the name, v is the list of times

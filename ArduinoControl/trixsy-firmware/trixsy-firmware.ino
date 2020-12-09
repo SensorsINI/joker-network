@@ -24,7 +24,7 @@ const String HELP = "Send char '1' to activate solenoid finger, '0' to relax it\
 
 const int FINGER_PIN = 3;  // setting this high will activate solenoide finger. But it should NOT be left high long, or the solenoide can burn out
 const int BUTTON_PIN = 8; // pushing button will pull pin low (pin is configured input pullup with button tied to ground on other side of button)
-const int LATENCY_TEST_PIN=6; // wire to ground through a switch to test finger latency
+//const int LATENCY_TEST_PIN=6; // wire to ground through a switch to test finger latency
 
 const int PULSE_TIME_MS = 40; // pulse time in ms to drive finger out
 const int  HOLD_DUTY_CYCLE = 50; // duty cycle for PWM output to hold finger out, range 0-255 for analogWrite
@@ -49,7 +49,7 @@ void setup()
   digitalWrite(FINGER_PIN,HIGH);  // HIGH turns OFF the finger solenoid by pulling power MOSFET gate low
   pinMode(BUTTON_PIN, INPUT_PULLUP); // button activates solenoid
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(LATENCY_TEST_PIN, INPUT_PULLUP);
+//  pinMode(LATENCY_TEST_PIN, INPUT_PULLUP);
 
   // check EEPROM values for pulses time and duty cycle
   byte b=EEPROM.read(0);
@@ -123,20 +123,22 @@ void loop()
         Serial.print("unknown command character recieved: ");
         Serial.println(c);
     }
-  }
+  }else{ // no serial port cmd
 
-  bool but=digitalRead(BUTTON_PIN);
+    bool but=digitalRead(BUTTON_PIN);
   
-  if (but == LOW) { // button pressed
-    if (previousButState == HIGH) {
-      if (DEBUG) Serial.println("button pressed");
-      state = STATE_FINGER_PUSHING_OUT;
+    if (but == LOW) { // button pressed
+      if (previousButState == HIGH) {
+        if (DEBUG) Serial.println("button pressed");
+        state = STATE_FINGER_PUSHING_OUT;
+      }
+    } else if (but == HIGH) { // button pressed
+      if (previousButState == LOW) {
+        if (DEBUG) Serial.println("button released");
+        state = STATE_IDLE;
+      }
     }
-  } else if (but == HIGH) { // button pressed
-    if (previousButState == LOW) {
-      if (DEBUG) Serial.println("button released");
-      state = STATE_IDLE;
-    }
+    previousButState=but;
   }
 
   switch (state) {
@@ -153,20 +155,20 @@ void loop()
         digitalWrite(FINGER_PIN, 0);
       } else if (millis() - fingerActivatedTime > pulseTimeMs) {
         state = STATE_FINGER_HOLDING;
+        analogWrite(FINGER_PIN, 255-holdDutyCycle); // invert because pin output is active low to turn on solenoid current
         if (DEBUG) Serial.println("now holding finger out");
       }
-      if(digitalRead(LATENCY_TEST_PIN)==0){
-          long latency=millis()-fingerActivatedTime;
-          Serial.print("measured latency in ms: ");
-          Serial.println(latency);
-      }
+//      if(digitalRead(LATENCY_TEST_PIN)==0){
+//          long latency=millis()-fingerActivatedTime;
+//          Serial.print("measured latency in ms: ");
+//          Serial.println(latency);
+//      }
       break;
     case STATE_FINGER_HOLDING:
-      analogWrite(FINGER_PIN, 255-holdDutyCycle); // invert because pin output is active low to turn on solenoid current
       break;
   }
   previousState = state;
-  previousButState=but;
+
 
 
   if(millis()-heartbeatToggleTimeMs>HEARTBEAT_PERIOD_MS){

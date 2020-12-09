@@ -380,8 +380,10 @@ def riffle_test(args):
                                 mode='step-fwd'
                             elif mode=='step-fwd':
                                 mode='fwd'
+                                pause_mode=0
                             else:
                                 mode='fwd'
+                                pause_mode=0
                             continue
                         elif k == 255:  # no key or space
                             mode = 'fwd'

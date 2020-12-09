@@ -35,9 +35,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='consumer: Consumes DVS frames for trixy to process', allow_abbrev=True,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        "--latency_test", action='store_true',
-        help="test end to end latency activating finger on every received frame after inference but only once per 2s")
+
     parser.add_argument(
         "--serial_port", type=str, default=SERIAL_PORT,
         help="serial port, e.g. /dev/ttyUSB0")
@@ -106,8 +104,6 @@ if __name__ == '__main__':
             cv2.waitKey(1)
 
 
-    latency_test=args.latency_test
-    last_latency_test_time=time.time()
     last_frame_number=0
     # receive_data=bytearray(UDP_BUFFER_SIZE)
     while True:
@@ -130,23 +126,16 @@ if __name__ == '__main__':
                     # tries+=1
 
             with Timer('unpickle and normalize/reshape'):
-                (frame_number,timestamp, img) = pickle.loads(receive_data)
+                (frame_number, timestamp, img255) = pickle.loads(receive_data)
                 dropped_frames=frame_number-last_frame_number-1
                 if dropped_frames>0:
                     log.warning(f'Dropped {dropped_frames} frames from producer')
                 last_frame_number=frame_number
-                img = (1./255)*np.array(img, dtype=np.float32)
+                img_01_float32 = (1. / 255) * np.array(img255, dtype=np.float32)
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                is_joker, joker_prob, pred=classify_joker_img(img, model,interpreter, input_details, output_details)
-            if latency_test:
+                is_joker, joker_prob, pred=classify_joker_img(img_01_float32, model, interpreter, input_details, output_details)
 
-                if time.time()-last_latency_test_time>2:
-                    is_joker=True
-                    last_latency_test_time=time.time()
-                else:
-                    is_joker=False
-                    arduino_serial_port.write(b'f')
 
             if is_joker: # joker
                 arduino_serial_port.write(b'1')
@@ -165,11 +154,11 @@ if __name__ == '__main__':
             with Timer('producer->consumer inference delay',delay=dt, show_hist=True):
                 pass
 
-            save_img= (img.squeeze()).astype('uint8')
+            save_img_255= (img255.squeeze()).astype('uint8')
             if is_joker: # joker
                 # find next name that is not taken yet
-                next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img)
-                show_frame(save_img, 'joker', cv2_resized)
+                next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img_255)
+                show_frame(1-img_01_float32, 'joker', cv2_resized)
                 non_joker_window_number=0
                 for saved_img in saved_non_jokers:
                     next_non_joker_index= write_next_image(NONJOKERS_FOLDER, next_non_joker_index, saved_img)
@@ -178,7 +167,7 @@ if __name__ == '__main__':
                 saved_non_jokers.clear()
             else:
                 if random.random()<.03: # append random previous images to not just get previous almost jokers
-                    saved_non_jokers.append(copy.deepcopy(save_img)) # we need to copy the frame otherwise the reference is overwritten by next frame and we just get the same frame over and over
+                    saved_non_jokers.append(copy.deepcopy(save_img_255)) # we need to copy the frame otherwise the reference is overwritten by next frame and we just get the same frame over and over
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 

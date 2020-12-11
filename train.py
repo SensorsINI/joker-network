@@ -613,7 +613,7 @@ def create_model_alexnet():
     """ Creates the CNN model for joker detection
     """
     do=.1
-    l1reg=1e-5
+    l1reg=1e-2
 
     log.info(f'making LeNet with dropout={do} and L1 weight regularization with cost {l1reg}')
 
@@ -1150,6 +1150,45 @@ def generate_augmented_images(args):
 
     log.info(f'saved {nsaved} augmented images to {aug_folder} from {src_data_folder}')
 
+def visualize_model(model=None):
+    """ Plots some kernels to visualize their state
+
+    :param model: if supplied, use it, otherwise load latest model
+    """
+    from matplotlib import pyplot
+    if model is None:
+        model,interpreter, input_details, output_details=load_latest_model(dialog=False,use_tflite_model=False)
+    # https://machinelearningmastery.com/how-to-visualize-filters-and-feature-maps-in-convolutional-neural-networks/
+    # retrieve weights from the hidden layer
+    sel_layer=0
+    filters, biases = model.layers[sel_layer].get_weights() # filters is 4d array with [s,s,n,m] with s kernel size, n input, m output, biases is 1d array
+    # normalize filter values to 0-1 so we can visualize them
+    f_min, f_max = filters.min(), filters.max()
+    filters = (filters - f_min) / (f_max - f_min)
+    # plot first few filters
+    n_filters, ix = filters.shape[3], 1 # filters.shape[3] total
+    ncolrow=math.ceil(math.sqrt(filters.shape[2]*filters.shape[3]))
+    fig,ax=pyplot.figure(0)
+    fig.set_title(f'layer {sel_layer}: min/max={eng(f_min)}/{eng(f_max)}')
+    for i in range(n_filters):
+        # get the filter
+        f = filters[:, :, :, i]
+        # plot each channel separately
+
+        for j in range(filters.shape[2]): #  total, too many
+            # specify subplot and turn of axis
+            # ax = pyplot.subplot(n_filters, filters.shape[2], ix)
+            ax = pyplot.subplot(ncolrow, ncolrow, ix)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            # plot filter channel in grayscale
+            pyplot.imshow(f[:, :, j], cmap='gray')
+            ix += 1
+    # show the figure
+    pyplot.show()
+
+
+
 args = None  # if run as module
 
 if __name__ == '__main__':
@@ -1164,6 +1203,7 @@ if __name__ == '__main__':
     parser.add_argument("--measure_flops", action='store_true', help="measures flops/frame of network.")
     parser.add_argument("--measure_latency", action='store_true', help="measures CNN latency.")
     parser.add_argument("--augment_training_set", action='store_true', help="show augmented training images using default augmentation.")
+    parser.add_argument("--visualize_model", action='store_true', help="plot some kernels from network.")
 
     args = parser.parse_args()
     if args.train or args.test_accuracy:
@@ -1183,5 +1223,9 @@ if __name__ == '__main__':
     elif args.measure_flops:
         stats = measure_flops()
         log.info(f'total flops/frame={eng(stats.total_flops)}')
+    elif args.visualize_model:
+        visualize_model()
     else:
         parser.print_help()
+
+

@@ -503,7 +503,7 @@ def load_latest_model(folder=None, dialog=True, use_tflite_model=USE_TFLITE):
     :param dialog: set False to raise FileNotFoundError or True to open file dialog to browse for model
     :param use_tflite_model: set False load normal TF mode, True to load TFLITE model
 
-    :returns: model, tflite_interpreter, input_details, output_details
+    :returns: model, tflite_interpreter, input_details, output_details, model_folder
     """
     # existing_model_folders = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '*/')
     model = None
@@ -562,7 +562,7 @@ def load_latest_model(folder=None, dialog=True, use_tflite_model=USE_TFLITE):
                 input_details = interpreter.get_input_details()
                 output_details = interpreter.get_output_details()
 
-    return model,interpreter, input_details, output_details
+    return model,interpreter, input_details, output_details, model_folder
 
 def measure_flops(model=None):
     log.info('measuring Op/frame for CNN')
@@ -1156,20 +1156,22 @@ def visualize_model(model=None):
     :param model: if supplied, use it, otherwise load latest model
     """
     from matplotlib import pyplot
+    from engineering_notation import EngNumber as eng
+    model_folder='.'
     if model is None:
-        model,interpreter, input_details, output_details=load_latest_model(dialog=False,use_tflite_model=False)
+        model,interpreter, input_details, output_details,model_folder=load_latest_model(dialog=False,use_tflite_model=False)
     # https://machinelearningmastery.com/how-to-visualize-filters-and-feature-maps-in-convolutional-neural-networks/
     # retrieve weights from the hidden layer
     sel_layer=0
     filters, biases = model.layers[sel_layer].get_weights() # filters is 4d array with [s,s,n,m] with s kernel size, n input, m output, biases is 1d array
     # normalize filter values to 0-1 so we can visualize them
-    f_min, f_max = filters.min(), filters.max()
+    f_min, f_max = float(filters.min()), float(filters.max())
+    bn=os.path.split(model_folder)[-1]
     filters = (filters - f_min) / (f_max - f_min)
     # plot first few filters
     n_filters, ix = filters.shape[3], 1 # filters.shape[3] total
     ncolrow=math.ceil(math.sqrt(filters.shape[2]*filters.shape[3]))
-    fig,ax=pyplot.figure(0)
-    fig.set_title(f'layer {sel_layer}: min/max={eng(f_min)}/{eng(f_max)}')
+    fig, axs = pyplot.subplots(ncolrow, ncolrow)
     for i in range(n_filters):
         # get the filter
         f = filters[:, :, :, i]
@@ -1185,6 +1187,8 @@ def visualize_model(model=None):
             pyplot.imshow(f[:, :, j], cmap='gray')
             ix += 1
     # show the figure
+    fig.suptitle(f'{bn} layer {sel_layer}: min/max={eng(f_min)}/{eng(f_max)}')
+    pyplot.savefig(os.path.join(model_folder,'kernel_weights.pdf'))
     pyplot.show()
 
 

@@ -1,0 +1,203 @@
+2020-12-10 19:53:55,236-INFO-added logging handler to models\joker_net_an40-reg0p1_20201210-1953\training-20201210-1953.log
+2020-12-10 19:53:55,236-INFO-Tensorflow version 2.3.1
+2020-12-10 19:53:55,236-INFO-dataset path: TRAIN_DATA_FOLDER=G:\Downloads\trixsyDataset\training_dataset
+2020-12-10 19:53:55,236-INFO-TRAIN_DATA_FOLDER=G:\Downloads\trixsyDataset\training_dataset
+SRC_DATA_FOLDER=G:\Downloads\trixsyDataset\source_data
+2020-12-10 19:53:55,236-WARNING-test warning
+2020-12-10 19:53:55,236-ERROR-test error
+2020-12-10 19:53:55,236-INFO-making training generator
+2020-12-10 19:53:56,417-INFO-making validation generator
+2020-12-10 19:53:57,001-INFO-Model: "sequential"
+2020-12-10 19:53:57,001-INFO-_________________________________________________________________
+2020-12-10 19:53:57,001-INFO-Layer (type)                 Output Shape              Param #   
+2020-12-10 19:53:57,002-INFO-=================================================================
+2020-12-10 19:53:57,002-INFO-conv1 (Conv2D)               (None, 69, 69, 64)        23168     
+2020-12-10 19:53:57,002-INFO-_________________________________________________________________
+2020-12-10 19:53:57,002-INFO-dropout (Dropout)            (None, 69, 69, 64)        0         
+2020-12-10 19:53:57,002-INFO-_________________________________________________________________
+2020-12-10 19:53:57,002-INFO-batch_normalization (BatchNo (None, 69, 69, 64)        256       
+2020-12-10 19:53:57,002-INFO-_________________________________________________________________
+2020-12-10 19:53:57,002-INFO-max_pooling2d (MaxPooling2D) (None, 34, 34, 64)        0         
+2020-12-10 19:53:57,002-INFO-_________________________________________________________________
+2020-12-10 19:53:57,003-INFO-conv2 (Conv2D)               (None, 34, 34, 64)        102464    
+2020-12-10 19:53:57,003-INFO-_________________________________________________________________
+2020-12-10 19:53:57,003-INFO-dropout_1 (Dropout)          (None, 34, 34, 64)        0         
+2020-12-10 19:53:57,003-INFO-_________________________________________________________________
+2020-12-10 19:53:57,003-INFO-batch_normalization_1 (Batch (None, 34, 34, 64)        256       
+2020-12-10 19:53:57,003-INFO-_________________________________________________________________
+2020-12-10 19:53:57,003-INFO-max_pooling2d_1 (MaxPooling2 (None, 16, 16, 64)        0         
+2020-12-10 19:53:57,003-INFO-_________________________________________________________________
+2020-12-10 19:53:57,003-INFO-conv3 (Conv2D)               (None, 16, 16, 64)        36928     
+2020-12-10 19:53:57,003-INFO-_________________________________________________________________
+2020-12-10 19:53:57,003-INFO-dropout_2 (Dropout)          (None, 16, 16, 64)        0         
+2020-12-10 19:53:57,004-INFO-_________________________________________________________________
+2020-12-10 19:53:57,004-INFO-conv4 (Conv2D)               (None, 16, 16, 64)        36928     
+2020-12-10 19:53:57,004-INFO-_________________________________________________________________
+2020-12-10 19:53:57,004-INFO-dropout_3 (Dropout)          (None, 16, 16, 64)        0         
+2020-12-10 19:53:57,004-INFO-_________________________________________________________________
+2020-12-10 19:53:57,004-INFO-max_pooling2d_2 (MaxPooling2 (None, 7, 7, 64)          0         
+2020-12-10 19:53:57,012-INFO-_________________________________________________________________
+2020-12-10 19:53:57,012-INFO-flatten (Flatten)            (None, 3136)              0         
+2020-12-10 19:53:57,012-INFO-_________________________________________________________________
+2020-12-10 19:53:57,012-INFO-fc1 (Dense)                  (None, 64)                200768    
+2020-12-10 19:53:57,012-INFO-_________________________________________________________________
+2020-12-10 19:53:57,012-INFO-dropout_4 (Dropout)          (None, 64)                0         
+2020-12-10 19:53:57,012-INFO-_________________________________________________________________
+2020-12-10 19:53:57,012-INFO-fc2 (Dense)                  (None, 64)                4160      
+2020-12-10 19:53:57,013-INFO-_________________________________________________________________
+2020-12-10 19:53:57,013-INFO-dropout_5 (Dropout)          (None, 64)                0         
+2020-12-10 19:53:57,013-INFO-_________________________________________________________________
+2020-12-10 19:53:57,013-INFO-output (Dense)               (None, 2)                 130       
+2020-12-10 19:53:57,013-INFO-=================================================================
+2020-12-10 19:53:57,014-INFO-Total params: 405,058
+2020-12-10 19:53:57,014-INFO-Trainable params: 404,802
+2020-12-10 19:53:57,014-INFO-Non-trainable params: 256
+2020-12-10 19:53:57,014-INFO-_________________________________________________________________
+2020-12-10 19:53:57,014-INFO-starting training
+2020-12-10 19:53:57,014-INFO-Training uses class_weight=None (nonjoker/joker) with max 300 epochs steps_per_epoch=300 optimizer=<tensorflow.python.keras.optimizer_v2.gradient_descent.SGD object at 0x0000026CA8EA5B20> with focalloss_alpha=0.25 flocalloss_gamma=2 and train_batch_size=32 augmenation_enabled=True
+2020-12-10 19:53:57,014-INFO-learning rate schedule: <tensorflow.python.keras.optimizer_v2.learning_rate_schedule.ExponentialDecay object at 0x0000026CA8EA5F40>
+2020-12-10 19:53:57,014-INFO-summary of G:\Downloads\trixsyDataset\training_dataset/train/: 26732 samples:	23255/86.993% nonjoker,	3477/13.007% joker
+
+2020-12-10 19:53:57,014-INFO-summary of G:\Downloads\trixsyDataset\training_dataset/valid/: 12777 samples:	10388/81.302% nonjoker,	2389/18.698% joker
+
+2020-12-10 19:53:57,145-INFO-SGD learning rate: 0.010000
+2020-12-10 19:56:20,135-INFO-End epoch 0 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 19:56:20,136-INFO-End of epoch 0: loss: 477.90m categorical_accuracy: 869.62m val_loss: 743.69m val_categorical_accuracy: 813.02m 
+2020-12-10 19:56:20,971-INFO-SGD learning rate: 0.009629
+2020-12-10 19:58:46,851-INFO-End epoch 1 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 19:58:46,852-INFO-End of epoch 1: loss: 406.42m categorical_accuracy: 879.17m val_loss: 621.64m val_categorical_accuracy: 825.39m 
+2020-12-10 19:58:47,894-INFO-SGD learning rate: 0.009271
+2020-12-10 20:01:14,657-INFO-End epoch 2 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:01:14,657-INFO-End of epoch 2: loss: 377.91m categorical_accuracy: 895m val_loss: 400.61m val_categorical_accuracy: 888.63m 
+2020-12-10 20:01:15,511-INFO-SGD learning rate: 0.008926
+2020-12-10 20:03:38,966-INFO-End epoch 3 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:03:38,966-INFO-End of epoch 3: loss: 344.07m categorical_accuracy: 907.71m val_loss: 408.72m val_categorical_accuracy: 879.24m 
+2020-12-10 20:03:39,839-INFO-SGD learning rate: 0.008595
+2020-12-10 20:06:05,810-INFO-End epoch 4 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:06:05,811-INFO-End of epoch 4: loss: 330.53m categorical_accuracy: 914.58m val_loss: 398.53m val_categorical_accuracy: 888.24m 
+2020-12-10 20:06:06,731-INFO-SGD learning rate: 0.008276
+2020-12-10 20:08:29,340-INFO-End epoch 5 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:08:29,341-INFO-End of epoch 5: loss: 307.82m categorical_accuracy: 922.23m val_loss: 369.90m val_categorical_accuracy: 902.56m 
+2020-12-10 20:08:30,218-INFO-SGD learning rate: 0.007968
+2020-12-10 20:10:51,845-INFO-End epoch 6 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:10:51,845-INFO-End of epoch 6: loss: 286.31m categorical_accuracy: 932.99m val_loss: 382.94m val_categorical_accuracy: 899.66m 
+2020-12-10 20:10:52,684-INFO-SGD learning rate: 0.007672
+2020-12-10 20:13:18,718-INFO-End epoch 7 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:13:18,719-INFO-End of epoch 7: loss: 273.11m categorical_accuracy: 935.94m val_loss: 661.09m val_categorical_accuracy: 777.26m 
+2020-12-10 20:13:19,581-INFO-SGD learning rate: 0.007387
+2020-12-10 20:15:41,876-INFO-End epoch 8 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:15:41,877-INFO-End of epoch 8: loss: 252.97m categorical_accuracy: 947.71m val_loss: 349.14m val_categorical_accuracy: 923.22m 
+2020-12-10 20:15:42,748-INFO-SGD learning rate: 0.007113
+2020-12-10 20:18:08,512-INFO-End epoch 9 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:18:08,512-INFO-End of epoch 9: loss: 242.06m categorical_accuracy: 947.60m val_loss: 376.80m val_categorical_accuracy: 880.80m 
+2020-12-10 20:18:09,446-INFO-SGD learning rate: 0.006849
+2020-12-10 20:20:33,835-INFO-End epoch 10 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:20:33,836-INFO-End of epoch 10: loss: 237.31m categorical_accuracy: 951.46m val_loss: 355.30m val_categorical_accuracy: 910.15m 
+2020-12-10 20:20:34,713-INFO-SGD learning rate: 0.006594
+2020-12-10 20:22:57,161-INFO-End epoch 11 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:22:57,161-INFO-End of epoch 11: loss: 226.75m categorical_accuracy: 956.67m val_loss: 371.39m val_categorical_accuracy: 925.96m 
+2020-12-10 20:22:58,011-INFO-SGD learning rate: 0.006349
+2020-12-10 20:25:20,929-INFO-End epoch 12 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:25:20,930-INFO-End of epoch 12: loss: 215.78m categorical_accuracy: 959.19m val_loss: 1.04 val_categorical_accuracy: 863.97m 
+2020-12-10 20:25:21,789-INFO-SGD learning rate: 0.006113
+2020-12-10 20:27:43,917-INFO-End epoch 13 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:27:43,918-INFO-End of epoch 13: loss: 214.65m categorical_accuracy: 957.92m val_loss: 270.38m val_categorical_accuracy: 942.08m 
+2020-12-10 20:27:44,742-INFO-SGD learning rate: 0.005886
+2020-12-10 20:30:07,150-INFO-End epoch 14 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:30:07,151-INFO-End of epoch 14: loss: 210.08m categorical_accuracy: 958.44m val_loss: 455.35m val_categorical_accuracy: 876.26m 
+2020-12-10 20:30:08,025-INFO-SGD learning rate: 0.005668
+2020-12-10 20:32:30,739-INFO-End epoch 15 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:32:30,740-INFO-End of epoch 15: loss: 189.11m categorical_accuracy: 966.49m val_loss: 332.17m val_categorical_accuracy: 910.31m 
+2020-12-10 20:32:31,608-INFO-SGD learning rate: 0.005457
+2020-12-10 20:34:53,310-INFO-End epoch 16 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:34:53,311-INFO-End of epoch 16: loss: 196.94m categorical_accuracy: 968.27m val_loss: 285.85m val_categorical_accuracy: 930.81m 
+2020-12-10 20:34:54,174-INFO-SGD learning rate: 0.005254
+2020-12-10 20:37:16,014-INFO-End epoch 17 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:37:16,015-INFO-End of epoch 17: loss: 179.31m categorical_accuracy: 970.83m val_loss: 322.43m val_categorical_accuracy: 931.75m 
+2020-12-10 20:37:16,888-INFO-SGD learning rate: 0.005059
+2020-12-10 20:39:38,435-INFO-End epoch 18 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:39:38,436-INFO-End of epoch 18: loss: 183.06m categorical_accuracy: 971.92m val_loss: 289.12m val_categorical_accuracy: 933m 
+2020-12-10 20:39:39,318-INFO-SGD learning rate: 0.004871
+2020-12-10 20:42:05,461-INFO-End epoch 19 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:42:05,462-INFO-End of epoch 19: loss: 178.88m categorical_accuracy: 972.23m val_loss: 295.62m val_categorical_accuracy: 930.42m 
+2020-12-10 20:42:06,345-INFO-SGD learning rate: 0.004690
+2020-12-10 20:44:28,706-INFO-End epoch 20 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:44:28,706-INFO-End of epoch 20: loss: 173.22m categorical_accuracy: 971.82m val_loss: 296.50m val_categorical_accuracy: 934.10m 
+2020-12-10 20:44:29,580-INFO-SGD learning rate: 0.004516
+2020-12-10 20:46:51,154-INFO-End epoch 21 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:46:51,155-INFO-End of epoch 21: loss: 169.44m categorical_accuracy: 973.23m val_loss: 420.74m val_categorical_accuracy: 896.69m 
+2020-12-10 20:46:52,013-INFO-SGD learning rate: 0.004348
+2020-12-10 20:49:18,498-INFO-End epoch 22 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:49:18,499-INFO-End of epoch 22: loss: 166.35m categorical_accuracy: 974.32m val_loss: 381.61m val_categorical_accuracy: 903.50m 
+2020-12-10 20:49:19,372-INFO-SGD learning rate: 0.004187
+2020-12-10 20:51:41,385-INFO-End epoch 23 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:51:41,386-INFO-End of epoch 23: loss: 159.60m categorical_accuracy: 976.83m val_loss: 250.19m val_categorical_accuracy: 948.74m 
+2020-12-10 20:51:42,370-INFO-SGD learning rate: 0.004031
+2020-12-10 20:54:05,340-INFO-End epoch 24 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:54:05,340-INFO-End of epoch 24: loss: 159.04m categorical_accuracy: 976.10m val_loss: 252.41m val_categorical_accuracy: 944.20m 
+2020-12-10 20:54:06,170-INFO-SGD learning rate: 0.003882
+2020-12-10 20:56:28,426-INFO-End epoch 25 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:56:28,427-INFO-End of epoch 25: loss: 158.57m categorical_accuracy: 979.02m val_loss: 252.07m val_categorical_accuracy: 944.04m 
+2020-12-10 20:56:29,287-INFO-SGD learning rate: 0.003737
+2020-12-10 20:58:57,893-INFO-End epoch 26 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 20:58:57,894-INFO-End of epoch 26: loss: 155.74m categorical_accuracy: 980.06m val_loss: 231.33m val_categorical_accuracy: 954.06m 
+2020-12-10 20:58:58,755-INFO-SGD learning rate: 0.003599
+2020-12-10 21:01:25,755-INFO-End epoch 27 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:01:25,756-INFO-End of epoch 27: loss: 161.91m categorical_accuracy: 976.20m val_loss: 253.57m val_categorical_accuracy: 948.27m 
+2020-12-10 21:01:26,671-INFO-SGD learning rate: 0.003465
+2020-12-10 21:03:48,969-INFO-End epoch 28 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:03:48,970-INFO-End of epoch 28: loss: 150.79m categorical_accuracy: 981.88m val_loss: 352.78m val_categorical_accuracy: 906m 
+2020-12-10 21:03:49,828-INFO-SGD learning rate: 0.003336
+2020-12-10 21:06:11,097-INFO-End epoch 29 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:06:11,098-INFO-End of epoch 29: loss: 144.24m categorical_accuracy: 982.46m val_loss: 236.39m val_categorical_accuracy: 952.57m 
+2020-12-10 21:06:11,954-INFO-SGD learning rate: 0.003212
+2020-12-10 21:08:35,339-INFO-End epoch 30 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:08:35,340-INFO-End of epoch 30: loss: 145.47m categorical_accuracy: 982.15m val_loss: 258.82m val_categorical_accuracy: 947.56m 
+2020-12-10 21:08:36,195-INFO-SGD learning rate: 0.003093
+2020-12-10 21:10:59,209-INFO-End epoch 31 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:10:59,210-INFO-End of epoch 31: loss: 145.93m categorical_accuracy: 981.98m val_loss: 265.51m val_categorical_accuracy: 943.81m 
+2020-12-10 21:11:00,047-INFO-SGD learning rate: 0.002978
+2020-12-10 21:13:21,968-INFO-End epoch 32 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:13:21,969-INFO-End of epoch 32: loss: 138.43m categorical_accuracy: 984.17m val_loss: 355.12m val_categorical_accuracy: 916.02m 
+2020-12-10 21:13:22,811-INFO-SGD learning rate: 0.002867
+2020-12-10 21:15:44,704-INFO-End epoch 33 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:15:44,704-INFO-End of epoch 33: loss: 149.12m categorical_accuracy: 981.25m val_loss: 241.42m val_categorical_accuracy: 946.94m 
+2020-12-10 21:15:45,553-INFO-SGD learning rate: 0.002761
+2020-12-10 21:18:12,061-INFO-End epoch 34 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:18:12,062-INFO-End of epoch 34: loss: 141.29m categorical_accuracy: 982.78m val_loss: 227.41m val_categorical_accuracy: 954.29m 
+2020-12-10 21:18:12,884-INFO-SGD learning rate: 0.002658
+2020-12-10 21:20:34,924-INFO-End epoch 35 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:20:34,924-INFO-End of epoch 35: loss: 143.45m categorical_accuracy: 982.60m val_loss: 238.03m val_categorical_accuracy: 948.50m 
+2020-12-10 21:20:35,774-INFO-SGD learning rate: 0.002560
+2020-12-10 21:22:57,354-INFO-End epoch 36 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:22:57,355-INFO-End of epoch 36: loss: 138.70m categorical_accuracy: 984.17m val_loss: 288.87m val_categorical_accuracy: 927.76m 
+2020-12-10 21:22:58,326-INFO-SGD learning rate: 0.002464
+2020-12-10 21:25:21,157-INFO-End epoch 37 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:25:21,158-INFO-End of epoch 37: loss: 134.73m categorical_accuracy: 984.76m val_loss: 226.07m val_categorical_accuracy: 952.18m 
+2020-12-10 21:25:22,006-INFO-SGD learning rate: 0.002373
+2020-12-10 21:27:44,763-INFO-End epoch 38 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:27:44,765-INFO-End of epoch 38: loss: 141.42m categorical_accuracy: 982.81m val_loss: 214.05m val_categorical_accuracy: 959.30m 
+2020-12-10 21:27:45,594-INFO-SGD learning rate: 0.002285
+2020-12-10 21:30:08,130-INFO-End epoch 39 of training; got log keys: ['loss', 'categorical_accuracy', 'val_loss', 'val_categorical_accuracy']
+2020-12-10 21:30:08,131-INFO-End of epoch 39: loss: 133.22m categorical_accuracy: 986.67m val_loss: 246.22m val_categorical_accuracy: 944.74m 
+2020-12-10 21:30:08,992-INFO-SGD learning rate: 0.002200
+2020-12-10 21:32:09,633-WARNING-keyboard interrupt, saving model and testing
+2020-12-10 21:32:09,633-INFO-saving model to folder models\joker_net_an40-reg0p1_20201210-1953
+2020-12-10 21:32:13,260-INFO-converting model to tensorflow lite model
+2020-12-10 21:32:16,362-INFO-saving tflite model as models\joker_net_an40-reg0p1_20201210-1953\joker_net.tflite
+2020-12-10 21:32:16,370-INFO-evaluating accuracy
+2020-12-10 21:32:16,370-INFO-making test generator
+2020-12-10 21:32:16,370-INFO-making test generator
+2020-12-10 21:32:17,754-INFO-summary of G:\Downloads\trixsyDataset\training_dataset/test/: 31200 samples:	23400/75.000% nonjoker,	7800/25.000% joker
+
+2020-12-10 21:33:59,874-INFO-**** final test set balanced accuracy: 68.263% (chance would be 50%)
+Confusion matrix nonjoker/joker:
+ [[22185  1215]
+ [ 4546  3254]]
+2020-12-10 21:33:59,874-INFO-measuring Op/frame for CNN
+2020-12-10 21:33:59,876-ERROR-Caught No module named 'torch' measuring flops
+2020-12-10 21:33:59,876-INFO-measuring CNN latency in loop
+2020-12-10 21:33:59,877-INFO-loading CNN model from models\joker_net_an40-reg0p1_20201210-1953
+2020-12-10 21:34:00,378-INFO-CNN latency n=99: 5.03ms +/- 442.95us (median 5ms, min 4ms max 7ms)
+2020-12-10 21:34:00,379-INFO-**** done training after 100.5m; model saved in models\joker_net_an40-reg0p1_20201210-1953.
+See models\joker_net_an40-reg0p1_20201210-1953\training-20201210-1953.log for logging output for this run.

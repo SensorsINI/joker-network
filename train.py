@@ -8,7 +8,7 @@ import collections
 import datetime
 import glob
 import shutil
-from pathlib import Path
+import tempfile
 import random
 from shutil import copyfile
 from tkinter import *
@@ -18,13 +18,13 @@ from tkinter import filedialog, simpledialog
 # import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-import PIL
-import tensorflow as tf
+# import PIL
 import tensorflow.python.keras
 # from classification_models.keras import Classifiers
-import tensorflow_addons as tfa
+import tensorflow_addons as tfa # used for focalloss
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 # from alessandro: use keras from tensorflow, not from keras directly
+from tensorflow.python.keras import regularizers
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, History
 from tensorflow.python.keras.layers import Conv2D, MaxPooling2D, BatchNormalization
 from tensorflow.python.keras.layers import Dense, Dropout, Flatten, GlobalAveragePooling2D
@@ -46,11 +46,10 @@ log = my_logger(__name__)
 
 # logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-def rename_images():
+def rename_images(folder=SRC_DATA_FOLDER):
     """ Cleans up a folder filled with images (png and jpg) so that the images are numbered consecutively. Useful after using mv --backup=t to add new images to a folder
     :param folder: the folder name to clean up, relative to working directory
     """
-    folder = SRC_DATA_FOLDER
     root = Tk()
     root.withdraw()
     os.chdir(folder)
@@ -203,9 +202,9 @@ def riffle_test(args):
               'h print help')
 
     pause_modes={0:'pause_possible',1:'pause_certain',2:'dont_pause'}
-    pause_mode=0
+    pause_mode=0 # which classifications to pause for
 
-    model,interpreter, input_details, output_details = load_latest_model()
+    model,interpreter, input_details, output_details = load_latest_model(dialog=False)
     Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(NONJOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(DATA_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -354,6 +353,7 @@ def riffle_test(args):
                             print_help()
                         elif k == ord('u'):
                             undo()
+                            idx-=1
                         elif k == ord('t'):
                             pause_mode += 1
                             if pause_mode > 2:
@@ -376,15 +376,7 @@ def riffle_test(args):
                             idx = clamp(idx - 50, 0, nfiles-1)
                             log.info('fastforward')
                         elif k == ord(' '):  # space
-                            if mode == 'fwd':
-                                mode='step-fwd'
-                            elif mode=='step-fwd':
-                                mode='fwd'
-                                pause_mode=0
-                            else:
-                                mode='fwd'
-                                pause_mode=0
-                            continue
+                            mode='fwd'
                         elif k == 255:  # no key or space
                             mode = 'fwd'
                             continue
@@ -515,38 +507,60 @@ def load_latest_model(folder=None, dialog=True, use_tflite_model=USE_TFLITE):
     """
     # existing_model_folders = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '*/')
     model = None
-    tflite_model_path=None
-    model_folder = None
-    if folder is not None:
-        model_folder=folder
-        tflite_model_path = os.path.join(model_folder, TFLITE_FILE_NAME)
-    else:
-        paths = sorted(Path(MODEL_DIR).iterdir(), key=os.path.getmtime, reverse=True)
-        # existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
-        for model_folder in paths:
+    use_existing_model=True
+    if dialog:
+        use_existing_model=yes_or_no('use latest existing model?','y',timeout=10)
+    if use_existing_model:
+        tflite_model_path=None
+        model_folder = None
+        if folder is not None:
+            model_folder=folder
             tflite_model_path = os.path.join(model_folder, TFLITE_FILE_NAME)
-            if not os.path.isfile(tflite_model_path):
-                continue
-            else:
-                break
-    if model_folder is None:
-        log.error(f'no folder found in {MODEL_DIR} with {TFLITE_FILE_NAME}')
-        quit(1)
-    log.info(f'loading CNN model from {model_folder}')
-    if not use_tflite_model:
-        model = load_model(model_folder)
-        interpreter =  None
-        # Get input and output tensors.
-        input_details =None
-        output_details = None
+        else:
+            paths = sorted(Path(MODEL_DIR).iterdir(), key=os.path.getmtime, reverse=True)
+            # existing_models = glob.glob(MODEL_DIR + '/' + JOKER_NET_BASE_NAME + '_*/')
+            for model_folder in paths:
+                tflite_model_path = os.path.join(model_folder, TFLITE_FILE_NAME)
+                if not os.path.isfile(tflite_model_path):
+                    continue
+                else:
+                    break
+        if model_folder is None:
+            log.error(f'no folder found in {MODEL_DIR} with {TFLITE_FILE_NAME}')
+            quit(1)
+        log.info(f'loading CNN model from {model_folder}')
+        if not use_tflite_model:
+            model = load_model(model_folder)
+            interpreter =  None
+            # Get input and output tensors.
+            input_details =None
+            output_details = None
+        else:
+            # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
+            model=None
+            interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+            interpreter.allocate_tensors()
+            # Get input and output tensors.
+            input_details = interpreter.get_input_details()
+            output_details = interpreter.get_output_details()
     else:
-        # tflite interpreter, converted from TF2 model according to https://www.tensorflow.org/lite/convert
-        model=None
-        interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
-        interpreter.allocate_tensors()
-        # Get input and output tensors.
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
+        model=create_model(ask_for_comment=False)
+        model.compile()  # cannot save it at this point, TODO check what is needed to be able to save
+        with tempfile.TemporaryDirectory() as model_folder:
+            model.save(model_folder)
+            log.info('converting model to tensorflow lite model')
+            converter = tf.lite.TFLiteConverter.from_saved_model(model_folder)  # path to the SavedModel directory
+            tflite_model = converter.convert()
+            tflite_model_path = os.path.join(model_folder, TFLITE_FILE_NAME)
+
+            log.info(f'saving tflite model as {tflite_model_path}')
+            with open(tflite_model_path, 'wb') as f:
+                f.write(tflite_model)
+                interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+                interpreter.allocate_tensors()
+                # Get input and output tensors.
+                input_details = interpreter.get_input_details()
+                output_details = interpreter.get_output_details()
 
     return model,interpreter, input_details, output_details
 
@@ -598,13 +612,19 @@ def measure_flops(model=None):
 def create_model_alexnet():
     """ Creates the CNN model for joker detection
     """
+    do=.1
+    l1reg=1e-5
+
+    log.info(f'making LeNet with dropout={do} and L1 weight regularization with cost {l1reg}')
+
     model = Sequential()
 
     # model.add(Input(shape=(None,IMSIZE,IMSIZE,3),dtype='float32', name='input'))
-    model.add(Conv2D(filters=128, kernel_size=(19, 19),
+    model.add(Conv2D(filters=64, kernel_size=(19, 19),
                      strides=(3, 3), padding='valid',
                      input_shape=(IMSIZE, IMSIZE, 1),
-                     activation='relu', name='conv1'))
+                     activation='relu', name='conv1',kernel_regularizer=regularizers.l1(l1reg)))
+    model.add(Dropout(do))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2, 2),
                            strides=(2, 2),
@@ -612,7 +632,8 @@ def create_model_alexnet():
 
     model.add(Conv2D(filters=64, kernel_size=(5, 5),
                      strides=(1, 1), padding='same',
-                     activation='relu', name='conv2'))
+                     activation='relu', name='conv2',kernel_regularizer=regularizers.l1(l1reg)))
+    model.add(Dropout(do))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(3, 3),
                            strides=(2, 2),
@@ -620,10 +641,12 @@ def create_model_alexnet():
 
     model.add(Conv2D(filters=64, kernel_size=(3, 3),
                      strides=(1, 1), padding='same',
-                     activation='relu', name='conv3'))
-    model.add(Conv2D(filters=128, kernel_size=(3, 3),
+                     activation='relu', name='conv3',kernel_regularizer=regularizers.l1(l1reg)))
+    model.add(Dropout(do))
+    model.add(Conv2D(filters=64, kernel_size=(3, 3),
                      strides=(1, 1), padding='same',
-                     activation='relu', name='conv4'))
+                     activation='relu', name='conv4',kernel_regularizer=regularizers.l1(l1reg)))
+    model.add(Dropout(do))
     # model.add(Conv2D(filters=256, kernel_size=(3,3),
     #                 strides=(1,1), padding='same',
     #                 activation='relu', name='conv5'))
@@ -632,13 +655,13 @@ def create_model_alexnet():
 
     model.add(Flatten())
 
-    model.add(Dense(64, activation='relu', name='fc1'))
-    model.add(Dense(64, activation='relu', name='fc2'))
-    model.add(Dropout(0.5))
+    model.add(Dense(64, activation='relu', name='fc1',kernel_regularizer=regularizers.l1(l1reg)))
+    model.add(Dropout(do))
+    model.add(Dense(64, activation='relu', name='fc2',kernel_regularizer=regularizers.l1(l1reg)))
+    model.add(Dropout(do))
 
     # Output Layer
     model.add(Dense(2, activation='softmax', name='output'))
-
     return model
 
 
@@ -690,7 +713,7 @@ def create_model_mobilenet():
     return final
 
 
-def create_model(ask_for_comment=True):
+def create_model(ask_for_comment=True) ->tf.keras.Model:
     """
     Creates a new instance of model, returning the model folder, and starts file logger in it
 
@@ -714,7 +737,10 @@ def create_model(ask_for_comment=True):
 
 def measure_latency(model_folder=None):
     log.info('measuring CNN latency in loop')
-    model, interpreter, input_details, output_details = load_latest_model(folder=model_folder)
+    dialog=False
+    if model_folder is None:
+        dialog=True
+    model, interpreter, input_details, output_details = load_latest_model(folder=model_folder,dialog=dialog)
     nchan = input_details[0]['shape'][3]
     img = np.random.randint(0, 255, (IMSIZE, IMSIZE, nchan))
     N = 100
@@ -814,8 +840,8 @@ def train(args=None):
 
 
     train_batch_size = 32
-    valid_batch_size = 32
-    test_batch_size = 32
+    valid_batch_size = 128
+    test_batch_size = 128
     train_datagen=None
     train_generator=None
     valid_generator=None

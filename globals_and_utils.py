@@ -145,6 +145,7 @@ def yes_or_no(question, default='y', timeout=None):
             to_str='' if timeout is None or os.name=='nt' else f'(Timeout {default} in {timeout}s)'
             if os.name=='nt':
                 log.warning('cannot use timeout signal on windows')
+                time.sleep(.1) # make the warning come out first
                 reply=str(input(f'{question} {to_str} ({y}/{n}): ')).lower().strip()
             else:
                 reply = str(input_with_timeout(f'{question} {to_str} ({y}/{n}): ',timeout=timeout)).lower().strip()

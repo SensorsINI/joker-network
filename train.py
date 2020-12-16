@@ -204,7 +204,7 @@ def riffle_test(args):
     pause_modes={0:'pause_possible',1:'pause_certain',2:'dont_pause'}
     pause_mode=0 # which classifications to pause for
 
-    model,interpreter, input_details, output_details = load_latest_model(dialog=False)
+    model,interpreter, input_details, output_details,model_folder = load_latest_model(dialog=False)
     Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(NONJOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(DATA_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -624,8 +624,8 @@ def create_model_alexnet():
                      strides=(3, 3), padding='valid',
                      input_shape=(IMSIZE, IMSIZE, 1),
                      activation='relu', name='conv1',kernel_regularizer=regularizers.l1(l1reg)))
-    model.add(Dropout(do))
     model.add(BatchNormalization())
+    model.add(Dropout(do))
     model.add(MaxPooling2D(pool_size=(2, 2),
                            strides=(2, 2),
                            padding='valid'))

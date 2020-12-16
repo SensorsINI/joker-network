@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     address = ("", PORT)
     server_socket.bind(address)
-    model,interpreter, input_details, output_details=load_latest_model()
+    model,interpreter, input_details, output_details,model_folder=load_latest_model()
 
     serial_port = args.serial_port
     log.info('opening serial port {} to send commands to finger'.format(serial_port))

@@ -73,13 +73,13 @@ void setup()
   Serial.print(__DATE__);
   Serial.print(" ");
   Serial.println(__TIME__);
-  if (DEBUG) Serial.println("Compiled with DEBUG=true"); else Serial.println("Compiled with DEBUG=false");
   Serial.print("Finger pulse time in ms: ");
   Serial.println(pulseTimeMs);
   Serial.print("Finger hold duty cycle of 255: ");
   Serial.println(holdDutyCycle);
   Serial.println(HELP);
-
+  if (DEBUG) Serial.println("*** WARNING: Compiled with DEBUG=true (will be SLOW)"); else Serial.println("Compiled with DEBUG=false");
+  
   
   watchdog.enable(Watchdog::TIMEOUT_1S);
 }
@@ -123,7 +123,7 @@ void loop()
         Serial.print("unknown command character recieved: ");
         Serial.println(c);
     }
-  }else{ // no serial port cmd
+  }else if(state==STATE_IDLE){ // no serial port cmd and not active, then pay attention to button
 
     bool but=digitalRead(BUTTON_PIN);
   
